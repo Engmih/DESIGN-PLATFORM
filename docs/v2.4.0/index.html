@@ -225,14 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.5.0';
+const PLATFORM_VERSION = '2.4.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.5.0',
-    date: '2026-09-12',
-    notes: 'Double channel member to AISC 360-16, as a beam, a column, or both. Fourteen UPN channels transcribed from the published table and cross-checked against their own dimensions. Both arrangements are offered, back to back and toe to toe, and they are not interchangeable: on a pair of UPN 200 with a 100 mm gap the toe to toe arrangement is more than twice as stiff about the weak axis. The connector spacing is treated as a design input under Chapter E6, because between battens a single channel buckles on its own, and connectors too far apart are refused with the spacing that would be needed.',
-  },
   {
     version: '2.4.0',
     date: '2026-09-12',
@@ -438,8 +433,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "70";
-const RAW_TIME = "2026-09-13T07:08:50.529Z";
+const RAW_NUMBER = "65";
+const RAW_TIME = "2026-09-13T06:55:34.469Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -855,19 +850,6 @@ const UI = {
   'Rolled steel beam': 'كمرة معدنية درفلة',
   'Steel beam': 'كمرة معدنية',
   'Catalogue section': 'قطاع من الكتالوج',
-  'Double channel member': 'عضو من قناتين',
-  'Double channel': 'قناة مزدوجة',
-  'Channels': 'القنوات',
-  'Channel': 'القناة',
-  'Arrangement': 'ترتيب التجميع',
-  'Clear gap between the channels': 'الخلوص بين القناتين',
-  'Connection between the channels': 'الربط بين القناتين',
-  'Connected by': 'مربوطتان بـ',
-  'Spacing of the connectors': 'تباعد الروابط',
-  'Effective length L_c': 'الطول الفعّال L_c',
-  'Required axial force P_u': 'القوة المحورية المطلوبة P_u',
-  'Batten plates': 'ألواح ربط',
-  'Lacing bars': 'قضبان تشبيك',
   'Import from SAP2000': 'استيراد من SAP2000',
   'Model': 'الموديل',
   'Results': 'النتائج',
@@ -1828,10 +1810,6 @@ const CAP = {
   STEELB_COMPACT: 'steelb.compact',
   STEELB_FLEXURE: 'steelb.flexure',
   STEELB_SHEAR: 'steelb.shear',
-  BU_SLENDERNESS: 'bu.slenderness',
-  BU_COMPRESSION: 'bu.compression',
-  BU_BENDING: 'bu.bending',
-  BU_INTERACTION: 'bu.interaction',
 
   // Material models
   MAT_CONCRETE: 'material.concrete',
@@ -1896,10 +1874,6 @@ const CAP_LABELS = {
   [CAP.STEELB_COMPACT]: 'Compactness',
   [CAP.STEELB_FLEXURE]: 'Flexural strength',
   [CAP.STEELB_SHEAR]: 'Shear strength',
-  [CAP.BU_SLENDERNESS]: 'Built-up slenderness',
-  [CAP.BU_COMPRESSION]: 'Axial compression',
-  [CAP.BU_BENDING]: 'Bending',
-  [CAP.BU_INTERACTION]: 'Combined axial force and bending',
   [CAP.MAT_CONCRETE]: 'Concrete material model',
   [CAP.MAT_STEEL]: 'Structural steel material model',
   [CAP.MAT_REBAR]: 'Reinforcement material model',
@@ -2846,25 +2820,6 @@ function createSteelBeamItem(patch = {}) {
   return base;
 }
 
-/** Two channels acting together, as a beam, a column, or both. */
-function createDoubleChannelItem(patch = {}) {
-  const base = createItem({
-    category: ITEM_CATEGORY.STEEL_COLUMN,
-    code: 'AISC 360-22',
-    name: 'Double channel member',
-    ...patch,
-  });
-  base.kind = 'doublechannel';
-  base.geometry = {
-    channel: 'UPN 200', pairing: 'BACK_TO_BACK', gap: 100,
-    connection: 'BATTENS', connectorSpacing: 800, Lc: 4000,
-  };
-  base.materials = { fy: 275 };
-  base.actions = { Pu: 400e3, Mu: 40e6 };
-  delete base.baseplate;
-  return base;
-}
-
 function createItem(patch = {}) {
   const base = {
     id: uid('itm'),
@@ -3057,122 +3012,6 @@ function matchByDimensions(h, b, tw, tf, tol = 0.6) {
 }
 
 
-/* ===== src/sections/channels.js ===== */
-// sections/channels.js — UPN European standard channels.
-//
-// Transcribed from the published table and cross-checked the same way as the
-// I-sections: the area and the mass computed from each section's own dimensions
-// agree with the published figures to within 0.4 per cent across every row,
-// which is tighter than the I-sections because the channel table publishes the
-// area directly.
-//
-// `e` is the distance from the back of the web to the centroid. It is the one
-// value a double channel cannot be built without, and the rows that do not
-// publish it are not carried here rather than being guessed at.
-//
-// Dimensions mm, area cm2, second moments cm4, moduli cm3, radii cm, mass kg/m.
-
-const CHANNEL_SECTIONS = [
-  {"name": "UPN 50", "family": "UPN", "h": 50.0, "b": 38.0, "tw": 5.0, "tf": 7.0, "e": 13.7, "massPerMetre": 5.59, "A": 7.12, "Ix": 5.59, "Welx": 38.0, "Wplx": 50.0, "ix": 5.0, "Iy": 3.5, "Wely": 13.7, "Wply": 7.12, "iy": 21.0, "It": null, "Iw": null},
-  {"name": "UPN 65", "family": "UPN", "h": 65.0, "b": 42.0, "tw": 5.5, "tf": 7.5, "e": 14.2, "massPerMetre": 7.09, "A": 9.03, "Ix": 7.09, "Welx": 42.0, "Wplx": 65.0, "ix": 5.5, "Iy": 4.0, "Wely": 14.2, "Wply": 9.03, "iy": 34.0, "It": null, "Iw": null},
-  {"name": "UPN 80", "family": "UPN", "h": 80.0, "b": 45.0, "tw": 6.0, "tf": 8.0, "e": 14.5, "massPerMetre": 8.64, "A": 11.0, "Ix": 8.64, "Welx": 45.0, "Wplx": 80.0, "ix": 6.0, "Iy": 4.0, "Wely": 14.5, "Wply": 11.0, "iy": 47.0, "It": null, "Iw": null},
-  {"name": "UPN 100", "family": "UPN", "h": 100.0, "b": 50.0, "tw": 6.0, "tf": 8.5, "e": 15.5, "massPerMetre": 10.6, "A": 13.5, "Ix": 10.6, "Welx": 50.0, "Wplx": 100.0, "ix": 6.0, "Iy": 4.5, "Wely": 15.5, "Wply": 13.5, "iy": 64.0, "It": null, "Iw": null},
-  {"name": "UPN 120", "family": "UPN", "h": 120.0, "b": 55.0, "tw": 7.0, "tf": 9.0, "e": 16.0, "massPerMetre": 13.4, "A": 17.0, "Ix": 13.4, "Welx": 55.0, "Wplx": 120.0, "ix": 7.0, "Iy": 4.5, "Wely": 16.0, "Wply": 17.0, "iy": 82.0, "It": null, "Iw": null},
-  {"name": "UPN 140", "family": "UPN", "h": 140.0, "b": 60.0, "tw": 7.0, "tf": 10.0, "e": 17.5, "massPerMetre": 16.0, "A": 20.4, "Ix": 605.0, "Welx": 86.4, "Wplx": 103.0, "ix": 5.45, "Iy": 62.7, "Wely": 14.8, "Wply": 28.3, "iy": 1.75, "It": 5.68, "Iw": 1.8},
-  {"name": "UPN 160", "family": "UPN", "h": 160.0, "b": 65.0, "tw": 7.5, "tf": 10.5, "e": 18.4, "massPerMetre": 18.8, "A": 24.0, "Ix": 925.0, "Welx": 116.0, "Wplx": 138.0, "ix": 6.21, "Iy": 85.3, "Wely": 18.3, "Wply": 35.2, "iy": 1.89, "It": 7.39, "Iw": 3.26},
-  {"name": "UPN 180", "family": "UPN", "h": 180.0, "b": 70.0, "tw": 8.0, "tf": 11.0, "e": 19.2, "massPerMetre": 22.0, "A": 28.0, "Ix": 1350.0, "Welx": 150.0, "Wplx": 179.0, "ix": 6.95, "Iy": 114.0, "Wely": 22.4, "Wply": 42.9, "iy": 2.02, "It": 9.55, "Iw": 5.57},
-  {"name": "UPN 200", "family": "UPN", "h": 200.0, "b": 75.0, "tw": 8.5, "tf": 11.5, "e": 20.1, "massPerMetre": 25.3, "A": 32.2, "Ix": 1910.0, "Welx": 191.0, "Wplx": 228.0, "ix": 7.7, "Iy": 148.0, "Wely": 27.0, "Wply": 51.8, "iy": 2.14, "It": 11.9, "Iw": 9.07},
-  {"name": "UPN 220", "family": "UPN", "h": 220.0, "b": 80.0, "tw": 9.0, "tf": 12.5, "e": 21.4, "massPerMetre": 29.4, "A": 37.4, "Ix": 2690.0, "Welx": 245.0, "Wplx": 292.0, "ix": 8.48, "Iy": 197.0, "Wely": 33.6, "Wply": 64.1, "iy": 2.3, "It": 16.0, "Iw": 14.6},
-  {"name": "UPN 240", "family": "UPN", "h": 240.0, "b": 85.0, "tw": 9.5, "tf": 13.0, "e": 22.3, "massPerMetre": 33.2, "A": 42.3, "Ix": 3600.0, "Welx": 300.0, "Wplx": 358.0, "ix": 9.22, "Iy": 248.0, "Wely": 39.6, "Wply": 75.7, "iy": 2.42, "It": 19.7, "Iw": 22.1},
-  {"name": "UPN 260", "family": "UPN", "h": 260.0, "b": 90.0, "tw": 10.0, "tf": 14.0, "e": 23.6, "massPerMetre": 37.9, "A": 48.3, "Ix": 4820.0, "Welx": 371.0, "Wplx": 442.0, "ix": 9.99, "Iy": 317.0, "Wely": 47.7, "Wply": 91.6, "iy": 2.56, "It": 25.5, "Iw": 33.3},
-  {"name": "UPN 280", "family": "UPN", "h": 280.0, "b": 95.0, "tw": 10.0, "tf": 15.0, "e": 25.3, "massPerMetre": 41.8, "A": 53.3, "Ix": 6280.0, "Welx": 448.0, "Wplx": 532.0, "ix": 10.9, "Iy": 399.0, "Wely": 57.2, "Wply": 109.0, "iy": 2.74, "It": 31.0, "Iw": 48.5},
-  {"name": "UPN 300", "family": "UPN", "h": 300.0, "b": 100.0, "tw": 10.0, "tf": 16.0, "e": 27.0, "massPerMetre": 46.2, "A": 58.8, "Ix": 8030.0, "Welx": 535.0, "Wplx": 632.0, "ix": 11.7, "Iy": 495.0, "Wely": 67.8, "Wply": 130.0, "iy": 2.9, "It": 37.4, "Iw": 69.1}
-];
-
-function channelByName(name) {
-  return CHANNEL_SECTIONS.find((c) => c.name === name) || null;
-}
-
-function channelOptions() {
-  return [{
-    group: 'UPN',
-    options: CHANNEL_SECTIONS.map((c) => ({ value: c.name, label: `${c.name} — ${c.massPerMetre} kg/m` })),
-  }];
-}
-
-const PAIRING = {
-  BACK_TO_BACK: 'BACK_TO_BACK',   // ][  webs together, flanges pointing out
-  TOE_TO_TOE: 'TOE_TO_TOE',       // []  flanges facing, forming a closed box
-};
-
-const PAIRING_LABELS = {
-  BACK_TO_BACK: 'Back to back  ][  webs together',
-  TOE_TO_TOE: 'Toe to toe  []  flanges facing, a closed box',
-};
-
-const CONNECTION = {
-  BATTENS: 'BATTENS',
-  LACING: 'LACING',
-};
-
-const CONNECTION_LABELS = {
-  BATTENS: 'Batten plates',
-  LACING: 'Lacing bars',
-};
-
-/**
- * Properties of two channels acting together.
- *
- * About the x-axis the two simply add: both webs are the same distance from the
- * common centroid, so I_x doubles and nothing shifts.
- *
- * About the y-axis the parallel axis theorem does the work, and the distance
- * each channel's own centroid sits from the pair's centroid depends on how they
- * are turned round. That distance is where `e` is needed, and it is why the two
- * arrangements are not interchangeable: back to back with a gap puts the
- * material further out and is far stiffer about the weak axis.
- *
- * @param {object} ch  a channel from the catalogue
- * @param {string} pairing  PAIRING.BACK_TO_BACK or PAIRING.TOE_TO_TOE
- * @param {number} gap  clear distance between the two channels, mm
- */
-function doubleChannelSection(ch, pairing, gap) {
-  const g = Number(gap) || 0;
-  const A = 2 * ch.A * 100;                 // mm2
-  const Ix = 2 * ch.Ix * 1e4;               // mm4, unchanged by the arrangement
-  const Wplx = 2 * ch.Wplx * 1e3;
-  const Welx = 2 * ch.Welx * 1e3;
-
-  // Distance from the pair's centroid to each channel's own centroid
-  const backToBack = pairing === PAIRING.BACK_TO_BACK;
-  const d = backToBack
-    ? g / 2 + ch.e                          // webs inside, centroid lies outward
-    : g / 2 + (ch.b - ch.e);                // toes inside, centroid lies outward
-
-  const Iy = 2 * (ch.Iy * 1e4 + ch.A * 100 * d * d);
-  const overallWidth = backToBack
-    ? g + 2 * ch.b
-    : g + 2 * ch.b;
-  const Wely = overallWidth > 0 ? (2 * Iy) / overallWidth : 0;
-
-  const It = 2 * ch.It * 1e4;
-  const ry = A > 0 ? Math.sqrt(Iy / A) : 0;
-  const rx = A > 0 ? Math.sqrt(Ix / A) : 0;
-
-  return {
-    A, Ix, Iy, Wplx, Welx, Wely, It, rx, ry,
-    d, overallWidth,
-    h: ch.h,
-    massPerMetre: 2 * ch.massPerMetre,
-    source: `2 × ${ch.name}`,
-    pairing, gap: g,
-    singleIy: ch.Iy * 1e4,
-    singleA: ch.A * 100,
-    singleRy: ch.iy * 10,
-  };
-}
-
-
 /* ===== src/core/elements.js ===== */
 // core/elements.js — the catalogue of things this platform can design.
 //
@@ -3323,18 +3162,6 @@ const ELEMENTS = [
     codes: ['AISC 360-22'],
     summary: 'Rolled or welded I-shape in flexure and shear to AISC 360-16 Chapter F, including lateral torsional buckling between brace points. This is the element an exported SAP model of a steel frame maps onto.',
     keywords: ['steel beam', 'rolled', 'i shape', 'wide flange', 'ipe', 'ltb', 'كمرة', 'معدنية', 'درفلة'],
-  },
-  {
-    id: 'double-channel',
-    slot: 'steel',
-    name: 'Double channel member',
-    short: 'Double channel',
-    category: ITEM_CATEGORY.STEEL_COLUMN,
-    available: true,
-    kind: 'doublechannel',
-    codes: ['AISC 360-22'],
-    summary: 'Two UPN channels back to back or toe to toe, as a beam, a column, or both. The connector spacing is a design input, not a detailing note: between battens each channel can buckle on its own, and Chapter E6 adds that to the slenderness of the pair.',
-    keywords: ['double channel', 'built up', 'upn', 'channel', 'batten', 'lacing', 'column', 'قناة', 'مزدوج', 'عمود', 'كمرة'],
   },
   {
     id: 'connection',
@@ -5068,104 +4895,6 @@ function runSteelBeam(registry, item) {
 }
 
 
-/* ===== src/modules/doublechannel/engine.js ===== */
-// modules/doublechannel/engine.js — double channel member.
-//
-// One element serves both the beam and the column case, because a double
-// channel is usually asked to do both and the interaction check needs the two
-// strengths side by side. Slenderness runs first: how far apart the connectors
-// sit decides everything that follows.
-
-
-function validateDoubleChannel(g) {
-  const out = [];
-  const ch = channelByName(g.channel);
-  if (!ch) out.push(`"${g.channel}" is not in the channel catalogue.`);
-  if (!(Number(g.Lc) > 0)) out.push('The effective length must be greater than zero.');
-  if (!(Number(g.connectorSpacing) > 0)) out.push('The connector spacing must be greater than zero: without connectors the two channels are two members, not one.');
-  if (Number(g.gap) < 0) out.push('The gap between the channels cannot be negative.');
-  if (ch && Number(g.connectorSpacing) > Number(g.Lc)) {
-    out.push('The connector spacing is longer than the member, so there are no intermediate connectors at all.');
-  }
-  return out;
-}
-
-const DC_PLAN = ['bu.slenderness', 'bu.compression', 'bu.bending', 'bu.interaction'];
-
-function buildDoubleChannelContext(item) {
-  const g = item.geometry;
-  const ch = channelByName(g.channel);
-  return {
-    codeId: item.code,
-    channel: ch,
-    sec: ch ? doubleChannelSection(ch, g.pairing || PAIRING.BACK_TO_BACK, g.gap) : null,
-    mat: { fy: Number(item.materials.fy) || 0 },
-    geometry: {
-      Lc: Number(g.Lc) || 0,
-      connectorSpacing: Number(g.connectorSpacing) || 0,
-      connection: g.connection,
-    },
-    pairing: g.pairing,
-    actions: item.actions,
-  };
-}
-
-function runDoubleChannel(registry, item) {
-  const codeId = item.code;
-  const ctx = buildDoubleChannelContext(item);
-  const scratch = {};
-  const steps = [];
-  const checks = [];
-  const notices = [];
-
-  const problems = validateDoubleChannel(item.geometry);
-  if (problems.length) {
-    checks.push(check({
-      id: 'geometry', title: 'Member description', code: codeId, clause: null,
-      status: CHECK_STATUS.NOT_APPLICABLE,
-      note: `The member as described cannot be built, so no calculation has been attempted. ${problems.join(' ')}`,
-    }));
-    return { ctx, scratch, steps, checks, notices, summary: summarise(checks), codeId, runCodeId: codeId, platformVersion: PLATFORM_VERSION, ranAt: new Date().toISOString() };
-  }
-
-  for (const cap of DC_PLAN) {
-    const res = registry.resolve(cap, codeId);
-    if (res.status === COVERAGE.COVERED && typeof res.handler === 'function') {
-      let out;
-      try {
-        out = res.handler(ctx, scratch);
-      } catch (err) {
-        checks.push(check({
-          id: cap, title: capLabel(cap), code: codeId, clause: res.clause,
-          status: CHECK_STATUS.NOT_IMPLEMENTED,
-          note: `The calculation could not be completed: ${err.message}`,
-        }));
-        continue;
-      }
-      if (out.steps) steps.push(...out.steps);
-      if (out.checks) checks.push(...out.checks);
-      if (out.scratch) Object.assign(scratch, out.scratch);
-      continue;
-    }
-    checks.push(check({
-      id: cap, title: capLabel(cap), code: codeId, clause: res.clause,
-      clauseTitle: res.clauseTitle,
-      status: res.status === COVERAGE.DECLARED ? CHECK_STATUS.NOT_IMPLEMENTED : CHECK_STATUS.NOT_COVERED,
-      note: res.note,
-    }));
-    notices.push({ cap, from: codeId, to: null, note: res.note });
-  }
-
-  return {
-    ctx, scratch, steps, checks, notices,
-    summary: summarise(checks),
-    codeId, runCodeId: codeId,
-    platformVersion: PLATFORM_VERSION,
-    ranAt: new Date().toISOString(),
-  };
-}
-
-
 /* ===== src/modules/baseplate/engine.js ===== */
 // modules/baseplate/engine.js — orchestrator for the base and anchorage.
 //
@@ -5260,7 +4989,6 @@ function runDesign(registry, item) {
   if (item.kind === 'plategirder') return runPlateGirder(registry, item);
   if (item.kind === 'retaining') return runRetainingWall(registry, item);
   if (item.kind === 'steelbeam') return runSteelBeam(registry, item);
-  if (item.kind === 'doublechannel') return runDoubleChannel(registry, item);
   const member = runCfst(registry, item);
   const base = runBasePlate(registry, item);
 
@@ -8159,254 +7887,6 @@ const AISC360_FLEX_HANDLERS = {
 };
 
 
-/* ===== src/codes/aisc360-builtup.js ===== */
-// codes/aisc360-builtup.js — double channel members, AISC 360-16.
-//
-// A pair of channels is not one member until something makes it one. Battens or
-// lacing hold the two apart, and between those connections each channel can
-// buckle on its own. Chapter E6 handles this with a modified slenderness that
-// adds the single channel's slenderness between connectors to the slenderness
-// of the pair. If the connectors are far apart, the modified value is what
-// governs, and a design that ignored it would be reading a strength the member
-// does not have.
-//
-// The E6 coefficients are flagged for confirmation. The structure of the
-// calculation is the code's; the numbers must be checked against the published
-// specification before anything is issued.
-
-
-const A16 = 'AISC 360-16';
-
-const AISC_BUILTUP_DATA = {
-  phiC: { value: 0.90, clause: 'E1', desc: 'Resistance factor for compression, LRFD', verify: true },
-  battenLimit: { value: 0.75, clause: 'E6.2', desc: 'The slenderness of an individual component between connectors shall not exceed three quarters of the governing slenderness of the built-up member', verify: true },
-  E: { value: 200000, clause: 'B3', desc: 'Modulus of elasticity, N/mm2', verify: false },
-};
-
-function bD(k) { return AISC_BUILTUP_DATA[k].value; }
-
-/* ---------------- built-up slenderness, E6 ---------------- */
-
-function bu_slenderness(ctx) {
-  const { sec, geometry, pairing } = ctx;
-  const Lc = Number(geometry.Lc) || 0;
-  const a = Number(geometry.connectorSpacing) || 0;
-  const connection = geometry.connection || CONNECTION.BATTENS;
-
-  const rxPair = sec.rx;
-  const ryPair = sec.ry;
-  const rGoverning = Math.min(rxPair, ryPair);
-  const lambdaPair = rGoverning > 0 ? Lc / rGoverning : Infinity;
-
-  // Slenderness of one channel about its own weak axis, between connectors
-  const ri = sec.singleRy;
-  const lambdaSingle = ri > 0 ? a / ri : Infinity;
-
-  // E6.1: modified slenderness for members with intermediate connectors
-  const lambdaModified = Math.sqrt(lambdaPair * lambdaPair + lambdaSingle * lambdaSingle);
-
-  const limit = bD('battenLimit') * lambdaPair;
-  const spacingOk = lambdaSingle <= limit;
-
-  const steps = [
-    step({
-      code: A16, clause: 'E6.1', symbol: '(L_c/r)_pair',
-      description: 'Slenderness of the pair about its governing axis',
-      expression: 'L_c / min(r_x, r_y)',
-      substitution: `${Lc} / ${rGoverning.toFixed(1)}`,
-      value: lambdaPair,
-    }),
-    step({
-      code: A16, clause: 'E6.1', symbol: '(a/r_i)',
-      description: 'Slenderness of one channel about its own weak axis, between connectors',
-      expression: 'a / r_i, with a the clear spacing of the connectors',
-      substitution: `${a} / ${ri.toFixed(1)}`,
-      value: lambdaSingle,
-    }),
-    step({
-      code: A16, clause: 'E6.1', symbol: '(L_c/r)_m',
-      description: 'Modified slenderness of the built-up member',
-      expression: '(L_c/r)_m = √[ (L_c/r)² + (a/r_i)² ]',
-      value: lambdaModified, verify: true,
-    }),
-    input({
-      symbol: 'connection', description: 'How the two channels are connected',
-      value: connection === CONNECTION.LACING ? 'Lacing bars' : 'Batten plates',
-      note: connection === CONNECTION.LACING
-        ? 'Lacing bars carry a transverse shear of their own, which E6 requires to be designed for. That check is not made here.'
-        : 'Batten plates and their welds or bolts carry a transverse shear that E6 requires to be designed for. That check is not made here.',
-    }),
-  ];
-
-  return {
-    steps,
-    checks: [check({
-      id: 'connectorSpacing',
-      title: 'Spacing of the connectors',
-      code: A16, clause: 'E6.2', clauseTitle: 'Dimensional requirements for built-up members',
-      demand: lambdaSingle, capacity: limit, dimension: null,
-      failureMode: 'One channel buckles on its own between connectors before the pair buckles as a unit',
-      steps, verify: true,
-      note: spacingOk
-        ? null
-        : `The connectors are too far apart: a single channel is slenderer between them than the pair is overall. Bring the spacing below about ${(limit * ri).toFixed(0)} mm.`,
-    })],
-    scratch: { lambdaPair, lambdaSingle, lambdaModified, connectorOk: spacingOk, Lc },
-  };
-}
-
-/* ---------------- axial compression, E3 ---------------- */
-
-function bu_compression(ctx, sc) {
-  const { sec, mat, actions } = ctx;
-  const E = bD('E');
-  const phi = bD('phiC');
-  const Pu = Math.abs(Number(actions.Pu) || 0);
-
-  const lam = sc.lambdaModified;
-  const Fe = (Math.PI * Math.PI * E) / (lam * lam);
-  const limit = 4.71 * Math.sqrt(E / mat.fy);
-
-  let Fcr;
-  let regime;
-  if (lam <= limit) {
-    Fcr = Math.pow(0.658, mat.fy / Fe) * mat.fy;
-    regime = 'Inelastic buckling governs.';
-  } else {
-    Fcr = 0.877 * Fe;
-    regime = 'Elastic buckling governs.';
-  }
-  const Pn = Fcr * sec.A;
-  const design = phi * Pn;
-
-  const steps = [
-    step({
-      code: A16, clause: 'E3', symbol: 'F_e', description: 'Elastic buckling stress on the modified slenderness',
-      expression: 'F_e = π² E / (L_c/r)_m²', value: Fe, dimension: 'stress',
-    }),
-    step({
-      code: A16, clause: 'E3', symbol: '4.71√(E/F_y)',
-      description: 'Limit separating inelastic from elastic buckling',
-      substitution: `${lam.toFixed(1)} against ${limit.toFixed(1)}`,
-      value: limit, verify: true,
-    }),
-    step({
-      code: A16, clause: 'E3', symbol: 'F_cr', description: `Critical stress. ${regime}`,
-      expression: lam <= limit ? 'F_cr = [0.658^(F_y/F_e)] F_y' : 'F_cr = 0.877 F_e',
-      value: Fcr, dimension: 'stress',
-    }),
-    step({
-      code: A16, clause: 'E1', symbol: 'φ_c P_n', description: 'Design compressive strength',
-      expression: 'P_n = F_cr A_g, φ_c = 0.90',
-      value: design, dimension: 'force', verify: true,
-    }),
-  ];
-
-  return {
-    steps,
-    checks: [check({
-      id: 'compression', title: 'Axial compressive strength',
-      code: A16, clause: 'E3', clauseTitle: 'Flexural buckling of members without slender elements',
-      demand: Pu, capacity: design, dimension: 'force',
-      failureMode: 'Flexural buckling of the built-up member',
-      steps, verify: true,
-      note: 'Torsional and flexural-torsional buckling of E4 are not checked. For a doubly symmetric pair of channels flexural buckling normally governs, but confirm it for slender arrangements.',
-    })],
-    scratch: { Fe, Fcr, PnDesign: design },
-  };
-}
-
-/* ---------------- bending ---------------- */
-
-function bu_bending(ctx, sc) {
-  const { sec, mat, actions } = ctx;
-  const phi = 0.90;
-  const Mu = Math.abs(Number(actions.Mu) || 0);
-  const Mp = mat.fy * sec.Wplx;
-  const My = mat.fy * sec.Welx;
-  const design = phi * Mp;
-
-  const steps = [
-    input({
-      symbol: 'W_pl,x', description: `Plastic modulus of the pair, twice the published value for one channel (${sec.source})`,
-      value: sec.Wplx,
-    }),
-    step({
-      code: A16, clause: 'F2.1', symbol: 'M_p', description: 'Plastic moment of the pair about the strong axis',
-      expression: 'M_p = F_y W_pl,x', value: Mp, dimension: 'moment',
-    }),
-    step({
-      code: A16, clause: 'F1', symbol: 'φ_b M_p', description: 'Design flexural strength',
-      expression: 'φ_b = 0.90', value: design, dimension: 'moment', verify: true,
-    }),
-  ];
-
-  return {
-    steps,
-    checks: [check({
-      id: 'bending', title: 'Bending about the strong axis',
-      code: A16, clause: 'F2', clauseTitle: 'Doubly symmetric compact I-shaped members bent about their major axis',
-      demand: Mu, capacity: design, dimension: 'moment',
-      failureMode: 'Yielding of the section in bending',
-      steps, verify: true,
-      note: 'Yielding only. Lateral torsional buckling is not checked for this arrangement: the pair has a much larger weak-axis stiffness than a single channel, but where the compression flange runs unbraced over a long length, §F2.2 must still be satisfied and is not evaluated here.',
-    })],
-    scratch: { Mp, My, MnDesign: design },
-  };
-}
-
-/* ---------------- combined ---------------- */
-
-function bu_interaction(ctx, sc) {
-  const { actions } = ctx;
-  const Pu = Math.abs(Number(actions.Pu) || 0);
-  const Mu = Math.abs(Number(actions.Mu) || 0);
-
-  if (!sc.PnDesign || !sc.MnDesign || (!Pu && !Mu)) {
-    return { steps: [], checks: [], scratch: {} };
-  }
-
-  const pr = Pu / sc.PnDesign;
-  const value = pr >= 0.2
-    ? pr + (8 / 9) * (Mu / sc.MnDesign)
-    : pr / 2 + (Mu / sc.MnDesign);
-
-  const steps = [
-    step({
-      code: A16, clause: 'H1.1', symbol: 'P_r/P_c', description: 'Axial utilisation, which decides the form of the interaction',
-      value: pr,
-    }),
-    step({
-      code: A16, clause: pr >= 0.2 ? 'H1-1a' : 'H1-1b', symbol: 'Σ',
-      description: 'Combined axial force and bending',
-      expression: pr >= 0.2
-        ? 'P_r/P_c + (8/9)(M_r/M_c) ≤ 1.0'
-        : 'P_r/(2P_c) + (M_r/M_c) ≤ 1.0',
-      value,
-    }),
-  ];
-
-  return {
-    steps,
-    checks: [check({
-      id: 'interaction', title: 'Combined axial force and bending',
-      code: A16, clause: 'H1.1', clauseTitle: 'Doubly and singly symmetric members subject to flexure and axial force',
-      utilisation: value, limit: 1.0,
-      failureMode: 'Combined compression and bending',
-      steps,
-    })],
-    scratch: { interaction: value },
-  };
-}
-
-const AISC360_BUILTUP_HANDLERS = {
-  slenderness: bu_slenderness,
-  compression: bu_compression,
-  bending: bu_bending,
-  interaction: bu_interaction,
-};
-
-
 /* ===== src/codes/en1993-baseplate.js ===== */
 // codes/en1993-baseplate.js — EN 1993-1-8 §6.2.5 column bases.
 //
@@ -9886,11 +9366,6 @@ const AISC_360 = {
     'F3': 'Doubly symmetric I-shaped members with noncompact flanges',
     'G1': 'General provisions for shear',
     'G2.1': 'Shear strength of webs without tension field action',
-    'E1': 'General provisions for compression',
-    'E3': 'Flexural buckling of members without slender elements',
-    'E6.1': 'Compressive strength of built-up members',
-    'E6.2': 'Dimensional requirements for built-up members',
-    'H1.1': 'Doubly and singly symmetric members subject to flexure and axial force',
   },
   capabilities: {
     [CAP.CFST_LIMITS]: { clause: 'I1.2', handler: null },
@@ -9905,15 +9380,10 @@ const AISC_360 = {
     [CAP.STEELB_COMPACT]: { clause: 'Table B4.1b', handler: AISC360_FLEX_HANDLERS.compactness },
     [CAP.STEELB_FLEXURE]: { clause: 'F2', handler: AISC360_FLEX_HANDLERS.flexure },
     [CAP.STEELB_SHEAR]: { clause: 'G2.1', handler: AISC360_FLEX_HANDLERS.shear },
-    [CAP.BU_SLENDERNESS]: { clause: 'E6.1', handler: AISC360_BUILTUP_HANDLERS.slenderness },
-    [CAP.BU_COMPRESSION]: { clause: 'E3', handler: AISC360_BUILTUP_HANDLERS.compression },
-    [CAP.BU_BENDING]: { clause: 'F2', handler: AISC360_BUILTUP_HANDLERS.bending },
-    [CAP.BU_INTERACTION]: { clause: 'H1.1', handler: AISC360_BUILTUP_HANDLERS.interaction },
     [CAP.BASEPLATE_BEARING]: { clause: 'J8', handler: null },
   },
   plans: {
     steelbeam: [CAP.STEELB_COMPACT, CAP.STEELB_FLEXURE, CAP.STEELB_SHEAR],
-    doublechannel: [CAP.BU_SLENDERNESS, CAP.BU_COMPRESSION, CAP.BU_BENDING, CAP.BU_INTERACTION],
     cfst: [
       CAP.CFST_CLASSIFICATION,
       CAP.CFST_AXIAL_BUCKLING,
@@ -11306,37 +10776,6 @@ const FORM_SPECS = {
         key: 'sb.actions', title: 'Design actions', fields: [
           { path: 'actions.Mu', label: 'Required moment M_u', dim: 'moment' },
           { path: 'actions.Vu', label: 'Required shear V_u', dim: 'force' },
-        ],
-      },
-    ],
-  },
-
-  doublechannel: {
-    title: (it) => `2 × ${it.geometry.channel}, ${PAIRING_LABELS[it.geometry.pairing] || ''}`,
-    groups: [
-      {
-        key: 'dc.section', title: 'Channels', fields: [
-          { path: 'geometry.channel', label: 'Channel', options: channelOptions()[0].options },
-          { path: 'geometry.pairing', label: 'Arrangement', options: Object.entries(PAIRING_LABELS).map(([value, label]) => ({ value, label })) },
-          { path: 'geometry.gap', label: 'Clear gap between the channels', dim: 'length' },
-        ],
-      },
-      {
-        key: 'dc.connection', title: 'Connection between the channels', fields: [
-          { path: 'geometry.connection', label: 'Connected by', options: Object.entries(CONNECTION_LABELS).map(([value, label]) => ({ value, label })) },
-          { path: 'geometry.connectorSpacing', label: 'Spacing of the connectors', dim: 'length' },
-          { path: 'geometry.Lc', label: 'Effective length L_c', dim: 'length' },
-        ],
-      },
-      {
-        key: 'dc.materials', title: 'Material', fields: [
-          { path: 'materials.fy', label: 'Steel yield F_y', dim: 'stress' },
-        ],
-      },
-      {
-        key: 'dc.actions', title: 'Design actions', fields: [
-          { path: 'actions.Pu', label: 'Required axial force P_u', dim: 'force' },
-          { path: 'actions.Mu', label: 'Required moment M_u', dim: 'moment' },
         ],
       },
     ],
@@ -13354,7 +12793,6 @@ function quickScreen(app) {
               : element.kind === 'plategirder' ? createPlateGirderItem(common)
                 : element.kind === 'retaining' ? createWallItem(common)
                   : element.kind === 'steelbeam' ? createSteelBeamItem(common)
-                    : element.kind === 'doublechannel' ? createDoubleChannelItem(common)
         : createItem({ ...common, category: element.category });
     if (element.kind === 'cfst') item.assumptions = generateAssumptions(item, item.code);
     if (resolved.note) item.codeNote = resolved.note;
@@ -14709,8 +14147,7 @@ function publicApi(app) {
     // core services
     createProject, validateProject, issueRevision,
     createItem, createBeamItem, createColumnItem, runCfst, runBeam, runColumn, runDesign, sectionProperties, generateAssumptions,
-    columnSection, footingSection, slabSection, combinedSection, createFootingItem, createSlabItem, createCombinedItem, runFooting, runSlab, runCombined, runPlateGirder, plateSection, createPlateGirderItem, runRetainingWall, wallGeometry, createWallItem, runSteelBeam, steelBeamSection, createSteelBeamItem, runDoubleChannel, createDoubleChannelItem,
-    CHANNEL_SECTIONS, channelByName, channelOptions, doubleChannelSection, PAIRING, codeForElement, ECP203_COL_DATA,
+    columnSection, footingSection, slabSection, combinedSection, createFootingItem, createSlabItem, createCombinedItem, runFooting, runSlab, runCombined, runPlateGirder, plateSection, createPlateGirderItem, runRetainingWall, wallGeometry, createWallItem, runSteelBeam, steelBeamSection, createSteelBeamItem, codeForElement, ECP203_COL_DATA,
     beamSection, barSchedule, BEAM_SUPPORT_LABELS, ECP203_DATA,
     defaultBasePlate, plateProperties,
     sheetBlocks, paginateBlocks, itemCsv,
