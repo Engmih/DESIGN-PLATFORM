@@ -225,19 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.9.0';
+const PLATFORM_VERSION = '2.7.1';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.9.0',
-    date: '2026-09-12',
-    notes: 'Review comments, and how a review is recorded. A comment raised against an item blocks it from reaching checked or approved until it is closed, and answering it is not the same as closing it: the person who raised it decides that. The project chooses whether review happens on screen, on paper or both, which decides whether the sheet prints a comments box and signature lines; the comments themselves print either way, and a sheet printed with comments still open says so on its face.',
-  },
-  {
-    version: '2.8.0',
-    date: '2026-09-12',
-    notes: 'Group design. A section imported from a model is carried by many members that do not carry the same load, so the platform now shows the members that govern, lets as many trial sections be sized as the job needs, and runs every section against every member. The result is a matrix of utilisations rather than one number: each member can be given the lightest section that works for it, or one section can be used across the whole group when it covers every member, and the members it does not cover are named rather than averaged away.',
-  },
   {
     version: '2.7.1',
     date: '2026-09-12',
@@ -463,8 +453,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "98";
-const RAW_TIME = "2026-09-13T10:35:45.107Z";
+const RAW_NUMBER = "86";
+const RAW_TIME = "2026-09-13T09:20:38.096Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -912,29 +902,6 @@ const UI = {
   'Worst P': 'أقصى P',
   'Design as': 'يُصمَّم كـ',
   'Delete': 'حذف',
-  'Members that govern': 'الأعضاء الحاكمة',
-  'Review comments': 'ملاحظات المراجعة',
-  'Raise a comment': 'إضافة ملاحظة',
-  'Add comment': 'أضف الملاحظة',
-  'Answer': 'ردّ',
-  'Close': 'إغلاق',
-  'Reopen': 'إعادة فتح',
-  'Open': 'مفتوحة',
-  'Answered': 'أُجيب عنها',
-  'Closed': 'مغلقة',
-  'None open': 'لا شيء مفتوح',
-  'How work is reviewed': 'كيف تُراجع الأعمال',
-  'Reviewer comments': 'ملاحظات المراجع',
-  'Sections to try': 'القطاعات المقترحة',
-  'Every section against every member': 'كل قطاع على كل عضو',
-  'Add a section': 'أضف قطاعاً',
-  'Use for the whole group': 'استخدمه للمجموعة كلها',
-  'Assign the lightest section that works': 'أسند أخف قطاع يصلح',
-  'Not assigned': 'غير مُسنَد',
-  'Assigned': 'المُسنَد',
-  'Member': 'العضو',
-  'Governs': 'يحكم',
-  'As modelled': 'كما في الموديل',
   'No element yet': 'لا يوجد عنصر بعد',
   'Structural steel': 'حديد إنشائي',
   'Reinforced concrete': 'خرسانة مسلحة',
@@ -1649,118 +1616,6 @@ function defaultRegister() {
 }
 
 
-/* ===== src/core/review.js ===== */
-// core/review.js — review comments and how a review is recorded.
-//
-// The office may review on screen or on paper, and the platform should not
-// insist. What it does insist on is that a comment raised against an item is
-// answered before that item is marked as checked: a comment that is still open
-// is the checker saying the design is not yet right, and letting the status
-// move past it would quietly overrule them.
-//
-// Comments are kept whatever the method, because a comment written here costs
-// nothing and a reprint costs a morning. What the method changes is the sheet.
-
-
-const REVIEW_METHOD = {
-  ELECTRONIC: 'electronic',
-  PAPER: 'paper',
-  BOTH: 'both',
-};
-
-const REVIEW_METHOD_LABELS = {
-  electronic: 'On screen — comments and sign-off in the platform',
-  paper: 'On paper — the sheet prints a comments box and signature lines',
-  both: 'Both — comments here, final signature on paper',
-};
-
-const COMMENT_STATUS = {
-  OPEN: 'Open',
-  ANSWERED: 'Answered',
-  CLOSED: 'Closed',
-};
-
-function newComment({ text, by, role, about }) {
-  return {
-    id: uid('cmt'),
-    at: nowIso(),
-    by: by || 'unattributed',
-    role: role || null,
-    about: about || null,      // which check, or null for the item as a whole
-    text: String(text || '').trim(),
-    status: COMMENT_STATUS.OPEN,
-    reply: null,
-    repliedBy: null,
-    repliedAt: null,
-    closedBy: null,
-    closedAt: null,
-  };
-}
-
-function openComments(item) {
-  return (item.comments || []).filter((c) => c.status !== COMMENT_STATUS.CLOSED);
-}
-
-function unansweredComments(item) {
-  return (item.comments || []).filter((c) => c.status === COMMENT_STATUS.OPEN);
-}
-
-/**
- * Whether an item may move to a given status.
- *
- * The rule that matters: nothing reaches checked or approved while a comment is
- * still open. The person who raised it decides when it is closed, not the
- * person answering it.
- */
-function statusBlocked(item, status) {
-  if (status !== 'Checked' && status !== 'Approved') return null;
-  const open = openComments(item);
-  if (!open.length) return null;
-  const answered = open.filter((c) => c.status === COMMENT_STATUS.ANSWERED).length;
-  return `${open.length} review comment${open.length === 1 ? ' is' : 's are'} still open`
-    + (answered ? `, ${answered} answered but not closed` : '')
-    + '. A comment is closed by the person who raised it.';
-}
-
-function replyTo(item, id, text, by) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, reply: String(text).trim(), repliedBy: by, repliedAt: nowIso(), status: COMMENT_STATUS.ANSWERED }
-    : c));
-}
-
-function closeComment(item, id, by) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, status: COMMENT_STATUS.CLOSED, closedBy: by, closedAt: nowIso() }
-    : c));
-}
-
-function reopenComment(item, id) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, status: c.reply ? COMMENT_STATUS.ANSWERED : COMMENT_STATUS.OPEN, closedBy: null, closedAt: null }
-    : c));
-}
-
-/** What the calculation sheet should carry, given the project's method. */
-function sheetReviewBlock(project, item) {
-  const method = (project && project.reviewMethod) || REVIEW_METHOD.BOTH;
-  const comments = item.comments || [];
-  const open = openComments(item);
-  return {
-    method,
-    printCommentBox: method === REVIEW_METHOD.PAPER || method === REVIEW_METHOD.BOTH,
-    printSignatureLines: method === REVIEW_METHOD.PAPER || method === REVIEW_METHOD.BOTH,
-    printCommentList: comments.length > 0,
-    comments,
-    openCount: open.length,
-    statement: method === REVIEW_METHOD.ELECTRONIC
-      ? 'Reviewed in the platform. The comments raised and their answers are listed above and are held in the change log.'
-      : method === REVIEW_METHOD.PAPER
-        ? 'Reviewed on paper. Comments and signatures are written on this sheet.'
-        : 'Comments raised in the platform; the final signature is given on this sheet.',
-  };
-}
-
-
 /* ===== src/core/project.js ===== */
 // core/project.js — the project record: schema, defaults, validation, revisions.
 
@@ -1841,9 +1696,6 @@ function createProject(patch = {}) {
     // Dates
     startDate: today,
     dueDate: '',
-
-    // How work is reviewed on this project
-    reviewMethod: 'both',
 
     // Free text
     notes: '',
@@ -3072,7 +2924,6 @@ function createItem(patch = {}) {
     // demands a written reason. See runCfst.
     fire: { required: true, reason: '' },
 
-    comments: [],
     assumptions: [],
     result: null,
     ...patch,
@@ -5778,168 +5629,6 @@ function runDesign(registry, item) {
     notices: [...member.notices, ...(base.notices || [])],
     summary: summarise(checks),
   };
-}
-
-
-/* ===== src/modules/group.js ===== */
-// modules/group.js — designing a group of members that share a section.
-//
-// HOW THIS DIFFERS FROM DESIGNING THE WORST MEMBER
-//
-// Fifty beams carry the same section because the shop wants them to, not
-// because they carry the same load. Designing the worst one and stopping there
-// is safe and wasteful; designing each one separately is accurate and
-// unbuildable. What an engineer actually does is size a small number of
-// sections against the members that govern, then work out which member takes
-// which section.
-//
-// So: the governing members give the starting sizes, the engineer names the
-// sections, and every section is then run against every member. The result is a
-// matrix, and the assignment is a choice made against it rather than a number
-// taken on trust.
-
-
-let counter = 0;
-
-/** A section the engineer has decided to try. Not a result: a candidate. */
-function newTrialSection(item, patch = {}) {
-  counter += 1;
-  return {
-    id: `sec_${counter}`,
-    name: patch.name || `Section ${counter}`,
-    geometry: { ...item.geometry, ...(patch.geometry || {}) },
-    materials: { ...item.materials, ...(patch.materials || {}) },
-    note: patch.note || '',
-  };
-}
-
-/**
- * The section to start from: the one the model already used.
- *
- * An earlier version created one trial per governing member and named each
- * after the member it came from, which implied a sizing that had not happened —
- * all three were copies of the same section. Promising work that was not done
- * is worse than doing none, so there is one starting section, plainly named,
- * and the engineer sizes the rest against the governing members shown above.
- */
-function seedFromGoverning(item, governing) {
-  return [newTrialSection(item, {
-    name: 'As modelled',
-    note: 'The section the analysis model used. Size the others against the governing members above, then compare.',
-  })];
-}
-
-/** The actions on one member, shaped for whichever element this group is. */
-function actionsForMember(item, member) {
-  const k = item.kind;
-  if (k === 'steelbeam') return { Mu: Math.abs(member.M), Vu: Math.abs(member.V) };
-  if (k === 'rcbeam') return { Mu: Math.abs(member.M), Qu: Math.abs(member.V), Tu: 0 };
-  if (k === 'rccolumn') return { Nu: Math.abs(member.P), Mx: Math.abs(member.M), My: 0 };
-  if (k === 'plategirder') return { MEd: Math.abs(member.M), VEd: Math.abs(member.V) };
-  if (k === 'doublechannel') return { Pu: Math.abs(member.P), Mu: Math.abs(member.M) };
-  // filled composite column
-  return { ...item.actions, NEd: Math.abs(member.P), MyEd: Math.abs(member.M) };
-}
-
-/**
- * Every trial section against every member.
- *
- * Returns a matrix of verdicts. A member is only adequate under a section if
- * the whole design passes for it; INCOMPLETE stays INCOMPLETE, because a check
- * the code does not cover is not a check that passed.
- */
-function evaluateGroup(registry, item, members, sections, loadFactor = 1) {
-  const rows = [];
-  for (const raw of members) {
-    // Rows come from two places: the governing members, which use M, V and P,
-    // and the stored member list, which keeps SAP's own M3 and V2. Reading only
-    // one set left every action at zero and every member reading safe.
-    const member = {
-      frame: raw.frame,
-      M: raw.M !== undefined && raw.M !== null ? raw.M : (raw.M3 || 0),
-      V: raw.V !== undefined && raw.V !== null ? raw.V : (raw.V2 || 0),
-      P: raw.P || 0,
-    };
-    const base = actionsForMember(item, {
-      M: member.M * loadFactor,
-      V: member.V * loadFactor,
-      P: member.P * loadFactor,
-    });
-    const cells = {};
-    for (const sec of sections) {
-      const trial = {
-        ...item,
-        geometry: { ...item.geometry, ...sec.geometry },
-        materials: { ...item.materials, ...sec.materials },
-        actions: { ...item.actions, ...base },
-      };
-      let res;
-      try {
-        res = runDesign(registry, trial);
-      } catch (err) {
-        cells[sec.id] = { overall: 'ERROR', u: null, note: err.message };
-        continue;
-      }
-      cells[sec.id] = {
-        overall: res.summary.overall,
-        u: res.summary.maxUtilisation,
-        governing: res.summary.governing ? res.summary.governing.title : null,
-      };
-    }
-    rows.push({ frame: member.frame, actions: base, member, cells });
-  }
-
-  const summary = {};
-  for (const sec of sections) {
-    const safe = rows.filter((r) => r.cells[sec.id] && r.cells[sec.id].overall === OVERALL.SAFE).length;
-    const worst = rows.reduce((a, r) => {
-      const c = r.cells[sec.id];
-      return c && Number.isFinite(c.u) && c.u > a ? c.u : a;
-    }, 0);
-    summary[sec.id] = { safe, total: rows.length, worst, coversAll: safe === rows.length };
-  }
-  return { rows, summary };
-}
-
-/**
- * Give every member the lightest section that works for it.
- * Sections are tried in the order given, so putting the smallest first gives
- * the most economical assignment.
- */
-function autoAssign(matrix, sections) {
-  const assignment = {};
-  const unassigned = [];
-  for (const row of matrix.rows) {
-    const fit = sections.find((s) => {
-      const c = row.cells[s.id];
-      return c && c.overall === OVERALL.SAFE;
-    });
-    if (fit) assignment[row.frame] = fit.id;
-    else unassigned.push(row.frame);
-  }
-  return { assignment, unassigned };
-}
-
-/** Whether one section can be used for the whole group. */
-function unifyOn(matrix, sectionId) {
-  const failing = matrix.rows.filter((r) => {
-    const c = r.cells[sectionId];
-    return !c || c.overall !== OVERALL.SAFE;
-  });
-  return {
-    possible: failing.length === 0,
-    failing: failing.map((r) => r.frame),
-    worst: matrix.summary[sectionId] ? matrix.summary[sectionId].worst : null,
-  };
-}
-
-/** How many sections an assignment actually uses, and how many of each. */
-function assignmentSummary(assignment, sections) {
-  const counts = new Map();
-  for (const id of Object.values(assignment)) counts.set(id, (counts.get(id) || 0) + 1);
-  return sections
-    .filter((s) => counts.has(s.id))
-    .map((s) => ({ section: s, count: counts.get(s.id) }));
 }
 
 
@@ -11223,13 +10912,6 @@ body.tg-translating .tg-board *{cursor:help}
 .tg-importbtn{display:grid;justify-items:center;gap:2px}
 .tg-importbtn span{font-size:10px;color:var(--tg-ink-40);font-family:var(--tg-font-ident)}
 
-.tg-trial{border:1px solid var(--tg-rule);padding:12px;margin-bottom:14px;background:#FAFAF7}
-.tg-trial__head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.tg-trial__head input{max-width:280px}
-.tg-trial__note{font-size:11.5px;color:var(--tg-ink-40);margin-bottom:8px}
-.tg-cell{display:inline-block}
-.tg-cell--on{outline:2px solid var(--tg-ink);outline-offset:2px;border-radius:2px}
-
 /* ---------- empty state ---------- */
 .tg-empty{text-align:center;padding:56px 24px;max-width:52ch;margin:0 auto}
 .tg-empty h2{font-size:${TYPE.scale.xl};margin-bottom:8px}
@@ -11342,21 +11024,6 @@ textarea[lang="ar"]{direction:rtl;text-align:right}
 .cs-stamp--unsafe{color:var(--tg-unsafe)}
 .cs-stamp--incomplete{color:var(--tg-notcov)}
 .cs-stamp--none{color:var(--tg-ink-40)}
-
-.cs-commentbox{border:1px solid var(--tg-ink);padding:6px 9px;margin-top:10px}
-.cs-commentbox b{font-size:8.4pt;display:block;margin-bottom:5px}
-.cs-commentbox__lines{display:grid;gap:9px}
-.cs-commentbox__line{border-bottom:1px solid var(--tg-rule)}
-
-.tg-comments{display:grid;gap:10px}
-.tg-comment{border:1px solid var(--tg-rule);border-left:4px solid var(--tg-ink-40);padding:10px 12px;background:#fff}
-.tg-comment--open{border-left-color:var(--tg-unsafe);background:var(--tg-unsafe-tint)}
-.tg-comment--answered{border-left-color:var(--tg-caution);background:var(--tg-caution-tint)}
-.tg-comment--closed{border-left-color:var(--tg-safe);background:#fff}
-.tg-comment__head{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:5px;font-size:12px}
-.tg-comment__when{margin-left:auto;color:var(--tg-ink-40);font-family:var(--tg-font-ident);font-size:11px}
-.tg-comment p{font-size:13px;margin:0 0 7px}
-.tg-comment__reply{border-top:1px solid var(--tg-rule);padding-top:6px;margin-bottom:7px;font-size:12.5px}
 
 .cs-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
 .cs-sign__box{border:1px solid var(--tg-rule);padding:5px 8px 8px}
@@ -12275,32 +11942,6 @@ function sheetBlocks(app, item) {
         : null,
     ))));
 
-  const review = sheetReviewBlock(p, item);
-  if (review.printCommentList) {
-    blocks.push(block(sectionHeading('7', 'Review comments')));
-    blocks.push(block(dataTable(
-      [
-        { label: 'Raised by', width: '18%', render: (c) => `${c.by}${c.role ? ` (${c.role})` : ''}` },
-        { label: 'Comment', render: (c) => c.text },
-        { label: 'Answer', render: (c) => c.reply || '—' },
-        { label: 'Status', width: '12%', render: (c) => c.status },
-      ],
-      review.comments,
-    )));
-    if (review.openCount) {
-      blocks.push(block(h('div', { class: 'cs-note cs-note--fail' },
-        h('b', null, `${review.openCount} comment${review.openCount === 1 ? ' is' : 's are'} still open`),
-        h('p', null, 'This sheet is printed with review comments outstanding. It is not a checked design.'))));
-    }
-  }
-  if (review.printCommentBox) {
-    blocks.push(block(h('div', { class: 'cs-commentbox' },
-      h('b', null, 'Reviewer comments'),
-      h('div', { class: 'cs-commentbox__lines' },
-        Array.from({ length: 6 }, () => h('div', { class: 'cs-commentbox__line' }))))));
-  }
-  blocks.push(block(h('p', { class: 'cs-cap' }, review.statement)));
-
   blocks.push(block(h('div', { class: 'cs-sign' },
     signBox('Designed', item.designer, item.revision),
     signBox('Checked', item.checker, item.revision),
@@ -12851,15 +12492,6 @@ function projectFormScreen(app, { mode = 'create' } = {}) {
           control: textInput({ id: 'f-start', type: 'date', value: draft.startDate, onInput: (v) => set('startDate', v) }),
         }),
         field({
-          label: 'How work is reviewed', id: 'f-review', span: true,
-          hint: 'Comments are available whatever you choose. This decides what the calculation sheet prints.',
-          control: select({
-            id: 'f-review', value: draft.reviewMethod || 'both',
-            options: Object.entries(REVIEW_METHOD_LABELS).map(([value, label]) => ({ value, label })),
-            onChange: (v) => set('reviewMethod', v),
-          }),
-        }),
-        field({
           label: 'Due date', id: 'f-due', error: err('dueDate'),
           control: textInput({ id: 'f-due', type: 'date', value: draft.dueDate, onInput: (v) => set('dueDate', v) }),
         }),
@@ -13264,9 +12896,6 @@ function designerScreen(app, itemId) {
       lede: `${isCfst ? describeSection(g) : describeItem(it)} · ${it.code}`,
       actions: [
         chip(it.revision, 'neutral'),
-        it.imported && it.imported.members && it.imported.members.length > 1
-          ? button(`Design the group — ${it.imported.members.length} members`, { small: true, onClick: () => app.openGroup(itemId) })
-          : null,
         button('Calculation sheet', { variant: 'ghost', small: true, onClick: () => app.openSheet(itemId) }),
         button('Back to register', { variant: 'quiet', small: true, onClick: () => app.navigate('items') }),
       ],
@@ -13629,82 +13258,7 @@ function designerScreen(app, itemId) {
       }),
     });
 
-    /* ---------- review comments ---------- */
-    const me = app.currentUser;
-    const draft = { text: '' };
-    const comments = sheet({
-      title: 'Review comments',
-      lede: 'A comment is answered by the designer and closed by whoever raised it. Nothing reaches checked or approved while one is still open.',
-      actions: [
-        openComments(it).length ? chip(`${openComments(it).length} open`, 'caution') : chip('None open', 'safe'),
-      ],
-      body: h('div', null,
-        h('div', { class: 'tg-grid', style: { marginBottom: '14px' } },
-          field({
-            label: 'Raise a comment', id: 'cmt-new', span: true,
-            hint: me ? `It will be recorded against ${me.name}.` : 'No engineer is signed in, so it will be recorded as unattributed.',
-            control: textArea({ id: 'cmt-new', value: '', rows: 3,
-              placeholder: 'What needs to change, and why.',
-              onInput: (v) => { draft.text = v; } }),
-          }),
-          h('div', { class: 'tg-row' }, button('Add comment', { onClick: () => {
-            const text = String(draft.text || '').trim();
-            if (!text) { toast('Write the comment first.', 'err'); return; }
-            const c = newComment({ text, by: app.actorName(), role: me ? me.role : null });
-            mutate((x) => ({ ...x, comments: [...(x.comments || []), c] }), {
-              audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                field: 'comment', to: text.slice(0, 120), reason: 'Review comment raised.', actor: app.actorName() },
-            });
-            toast('Comment raised and logged.', 'ok');
-          } })),
-        ),
-        (it.comments || []).length
-          ? h('div', { class: 'tg-comments' }, [...(it.comments || [])].reverse().map((c) => h('div', {
-            class: `tg-comment tg-comment--${c.status.toLowerCase()}`,
-          },
-            h('div', { class: 'tg-comment__head' },
-              chip(c.status, c.status === COMMENT_STATUS.OPEN ? 'unsafe' : c.status === COMMENT_STATUS.ANSWERED ? 'caution' : 'safe'),
-              h('b', null, c.by), h('span', null, c.role || ''),
-              h('span', { class: 'tg-comment__when' }, c.at.replace('T', ' ').slice(0, 16))),
-            h('p', null, c.text),
-            c.reply
-              ? h('div', { class: 'tg-comment__reply' },
-                h('b', null, `${c.repliedBy} replied`), h('p', null, c.reply))
-              : null,
-            h('div', { class: 'tg-row' },
-              c.status === COMMENT_STATUS.OPEN
-                ? button('Answer', { small: true, variant: 'ghost', onClick: () => {
-                  const text = window.prompt('Your answer to this comment:', '');
-                  if (text === null || !text.trim()) return;
-                  mutate((x) => ({ ...x, comments: replyTo(x, c.id, text, app.actorName()) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.reply', from: c.text.slice(0, 60), to: text.slice(0, 120),
-                      reason: 'Comment answered.', actor: app.actorName() },
-                  });
-                } })
-                : null,
-              c.status !== COMMENT_STATUS.CLOSED
-                ? button('Close', { small: true, onClick: () => {
-                  mutate((x) => ({ ...x, comments: closeComment(x, c.id, app.actorName()) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.closed', from: c.text.slice(0, 60), to: 'closed',
-                      reason: 'Comment closed by the reviewer.', actor: app.actorName() },
-                  });
-                } })
-                : button('Reopen', { small: true, variant: 'quiet', onClick: () => {
-                  mutate((x) => ({ ...x, comments: reopenComment(x, c.id) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.reopened', to: c.text.slice(0, 120),
-                      reason: 'Comment reopened.', actor: app.actorName() },
-                  });
-                } }),
-            ),
-          )))
-          : h('p', { class: 'tg-muted', style: { fontSize: '13px' } }, 'No comments have been raised against this item.'),
-      ),
-    });
-
-    host.replaceChildren(verdict, inputs, checksSheet, isCfst ? assumptions : null, comments);
+    host.replaceChildren(verdict, inputs, checksSheet, isCfst ? assumptions : null);
   }
 
   if (!item().result) recalc();
@@ -13787,9 +13341,6 @@ function stepsTable(res, u) {
  * design. The control simply does not offer what the role may not do.
  */
 function allowedStatus(app, item, status) {
-  // An open comment outranks a role: it is the reviewer saying the design is
-  // not yet right, and the status must not step past it.
-  if (statusBlocked(item, status)) return false;
   if (!app.people.length || !app.currentUser) return true;
   if (status === ITEM_STATUS.DRAFT || status === ITEM_STATUS.FOR_CHECK) return true;
   if (status === ITEM_STATUS.SUPERSEDED) return app.can('editItems') || app.can('approve');
@@ -13799,8 +13350,6 @@ function allowedStatus(app, item, status) {
 }
 
 function statusHint(app, item) {
-  const blocked = statusBlocked(item, 'Checked');
-  if (blocked) return blocked;
   if (!app.people.length) return 'Add engineers to the register to attribute checks and approvals.';
   if (!app.currentUser) return 'No engineer is signed in, so every status is offered and changes are recorded as unattributed.';
   const verdict = canCheckItem(app.currentUser, item);
@@ -14891,207 +14440,6 @@ function cmpCell(was, now, dim, app) {
 }
 
 
-/* ===== src/ui/screens/group.js ===== */
-// ui/screens/group.js — the group of members that share a section.
-
-
-function groupScreen(app, itemId) {
-  const host = h('div');
-  const project = () => app.store.state.project;
-  const item = () => project().items.find((i) => i.id === itemId);
-  const units = () => project().units;
-
-  function mutate(fn) {
-    app.store.update((s) => {
-      const i = s.project.items.findIndex((x) => x.id === itemId);
-      s.project.items[i] = fn({ ...s.project.items[i] });
-    });
-    render();
-  }
-
-  function ensureGroup(it) {
-    if (it.group) return it.group;
-    const g = {
-      sections: seedFromGoverning(it, (it.imported || {}).governing || []),
-      assignment: {},
-    };
-    mutate((x) => ({ ...x, group: g }));
-    return g;
-  }
-
-  function paint() {
-    const it = item();
-    if (!it) { host.replaceChildren(h('p', null, 'This item no longer exists.')); return; }
-
-    const imp = it.imported;
-    if (!imp || !imp.members || !imp.members.length) {
-      host.replaceChildren(sheet({
-        title: 'Group design',
-        body: emptyState({
-          title: 'This item has no group behind it',
-          body: 'Group design works on items brought in from an analysis model, where one section is carried by many members. A single member is designed on its own screen.',
-          actions: [button('Back to the design', { onClick: () => app.openItem(itemId) })],
-        }),
-      }));
-      return;
-    }
-
-    const g = ensureGroup(it);
-    const u = units();
-    const members = imp.members.filter((m) => (m.M3 !== null && m.M3 !== undefined) || (m.M !== null && m.M !== undefined) || m.P);
-    const matrix = evaluateGroup(app.registry, it, members, g.sections, 1);
-    const spec = specFor(it);
-
-    /* ---- governing members ---- */
-    const governing = sheet({
-      title: 'Members that govern',
-      lede: 'Each is a whole member: the one with the largest moment brings its own shear and axial force. These are real states of loading, not a worst-of-everything that exists on no member.',
-      actions: [button('Back to the design', { variant: 'quiet', small: true, onClick: () => app.openItem(itemId) })],
-      body: table({
-        columns: [
-          { label: 'Member', ident: true, render: (x) => x.frame },
-          { label: 'Governs', render: (x) => x.label },
-          { label: 'M', align: 'right', render: (x) => formatWithUnit(Math.abs(x.M), 'moment', u) },
-          { label: 'V', align: 'right', render: (x) => formatWithUnit(Math.abs(x.V), 'force', u) },
-          { label: 'P', align: 'right', render: (x) => formatWithUnit(Math.abs(x.P), 'force', u) },
-          { label: 'From', ident: true, render: (x) => x.MCase || '—' },
-        ],
-        rows: imp.governing || [],
-        empty: 'No governing members were recorded for this group.',
-      }),
-    });
-
-    /* ---- trial sections ---- */
-    const sectionFields = (sec) => {
-      if (!spec) return null;
-      const editable = spec.groups.flatMap((grp) => grp.fields)
-        .filter((f) => /^(geometry|materials)\./.test(f.path) && !f.options);
-      return h('div', { class: 'tg-grid' }, editable.slice(0, 8).map((f) => {
-        const id = `sec-${sec.id}-${f.path.replace(/\./g, '-')}`;
-        const raw = getPath(sec, f.path);
-        return field({
-          label: f.dim ? `${f.label} (${symbolFor(u, f.dim)})` : f.label,
-          id, ident: true,
-          control: numberInput({
-            id, value: f.dim ? fromBase(Number(raw) || 0, f.dim, u) : (Number(raw) || 0),
-            onCommit: (v) => mutate((x) => {
-              const next = { ...x, group: { ...x.group, sections: x.group.sections.map((s2) => {
-                if (s2.id !== sec.id) return s2;
-                const copy = { ...s2, geometry: { ...s2.geometry }, materials: { ...s2.materials } };
-                setPath(copy, f.path, f.dim ? toBase(v, f.dim, u) : v);
-                return copy;
-              }) } };
-              return next;
-            }),
-          }),
-        });
-      }));
-    };
-
-    const sectionsSheet = sheet({
-      title: 'Sections to try',
-      lede: 'Size as many as the job needs. Every one is checked against every member below, so the choice between them is made on results rather than on judgement alone.',
-      actions: [button('Add a section', { variant: 'ghost', small: true,
-        onClick: () => mutate((x) => ({ ...x, group: { ...x.group, sections: [...x.group.sections, newTrialSection(x)] } })) })],
-      body: h('div', { class: 'tg-form' }, g.sections.map((sec) => {
-        const sm = matrix.summary[sec.id] || {};
-        return h('div', { class: 'tg-trial' },
-          h('div', { class: 'tg-trial__head' },
-            textInput({ id: `name-${sec.id}`, value: sec.name,
-              onInput: (v) => { sec.name = v; } }),
-            chip(`${sm.safe || 0} of ${sm.total || 0} members safe`, sm.coversAll ? 'safe' : (sm.safe ? 'caution' : 'unsafe')),
-            sm.coversAll
-              ? button('Use for the whole group', { small: true, onClick: () => {
-                const r = unifyOn(matrix, sec.id);
-                if (!r.possible) { toast('Some members are not covered.', 'err'); return; }
-                mutate((x) => {
-                  const a = {};
-                  for (const row of matrix.rows) a[row.frame] = sec.id;
-                  return { ...x, group: { ...x.group, assignment: a } };
-                });
-                app.audit.append({ kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                  field: 'group.assignment', to: `all members on ${sec.name}`,
-                  reason: 'Section unified across the group.', actor: app.actorName() });
-                toast('Every member is now on this section.', 'ok');
-              } })
-              : null,
-            g.sections.length > 1
-              ? button('Remove', { small: true, variant: 'quiet', onClick: () => mutate((x) => ({
-                ...x, group: { ...x.group, sections: x.group.sections.filter((s2) => s2.id !== sec.id) },
-              })) })
-              : null),
-          sec.note ? h('div', { class: 'tg-trial__note' }, sec.note) : null,
-          sectionFields(sec),
-        );
-      })),
-    });
-
-    /* ---- the matrix ---- */
-    const cellFor = (row, sec) => {
-      const c = row.cells[sec.id];
-      if (!c) return '—';
-      const kind = c.overall === OVERALL.SAFE ? 'safe' : c.overall === OVERALL.UNSAFE ? 'unsafe' : 'caution';
-      const assigned = g.assignment[row.frame] === sec.id;
-      return h('div', { class: `tg-cell${assigned ? ' tg-cell--on' : ''}`, title: c.governing || '' },
-        chip(Number.isFinite(c.u) ? formatNumber(c.u, 2) : c.overall, kind));
-    };
-
-    const auto = autoAssign(matrix, g.sections);
-    const used = assignmentSummary(g.assignment, g.sections);
-
-    const matrixSheet = sheet({
-      title: 'Every section against every member',
-      lede: `${matrix.rows.length} members. The number in each cell is the utilisation; the colour is the verdict. Click a member to give it a section.`,
-      actions: [
-        button('Assign the lightest section that works', { onClick: () => {
-          mutate((x) => ({ ...x, group: { ...x.group, assignment: auto.assignment } }));
-          app.audit.append({ kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-            field: 'group.assignment', to: `${Object.keys(auto.assignment).length} members assigned automatically`,
-            reason: 'Each member given the first section it satisfies.', actor: app.actorName() });
-          toast(auto.unassigned.length
-            ? `${auto.unassigned.length} member${auto.unassigned.length === 1 ? '' : 's'} are not covered by any section.`
-            : 'Every member assigned.', auto.unassigned.length ? 'err' : 'ok');
-        } }),
-      ],
-      body: h('div', null,
-        table({
-          columns: [
-            { label: 'Member', ident: true, width: '90px', render: (r) => r.frame },
-            { label: 'M', align: 'right', render: (r) => formatWithUnit(Math.abs(r.member.M || 0), 'moment', u) },
-            { label: 'V', align: 'right', render: (r) => formatWithUnit(Math.abs(r.member.V || 0), 'force', u) },
-            { label: 'P', align: 'right', render: (r) => formatWithUnit(Math.abs(r.member.P || 0), 'force', u) },
-            ...g.sections.map((sec) => ({
-              label: sec.name, render: (r) => cellFor(r, sec),
-            })),
-            { label: 'Assigned', width: '190px', render: (r) => select({
-              id: `asg-${r.frame}`, value: g.assignment[r.frame] || '',
-              placeholder: 'Not assigned',
-              options: g.sections.map((s2) => ({ value: s2.id, label: s2.name })),
-              onChange: (v) => mutate((x) => ({ ...x, group: { ...x.group, assignment: { ...x.group.assignment, [r.frame]: v } } })),
-            }) },
-          ],
-          rows: matrix.rows,
-        }),
-        auto.unassigned.length
-          ? note({ variant: 'danger', title: `${auto.unassigned.length} members are not covered by any section`,
-            body: `Add a heavier section, or design these separately: ${auto.unassigned.slice(0, 12).join(', ')}${auto.unassigned.length > 12 ? ' and others' : ''}.` })
-          : null,
-        used.length
-          ? note({ title: 'What the schedule would say',
-            list: used.map((x) => `${x.count} member${x.count === 1 ? '' : 's'} on ${x.section.name}`) })
-          : null,
-      ),
-    });
-
-    host.replaceChildren(governing, sectionsSheet, matrixSheet);
-  }
-
-  function render() { preserveFocus(paint); }
-  render();
-  return host;
-}
-
-
 /* ===== src/ui/screens/overview.js ===== */
 // ui/screens/overview.js — the project record as a drawing title block.
 
@@ -15875,7 +15223,6 @@ function boot(mountEl) {
     can(action) { return can(app.currentUser, action); },
     openItem(id) { app.openItemId = id; app.route = 'designer'; app.render(); },
     openSheet(id) { app.openItemId = id; app.route = 'sheet'; app.render(); },
-    openGroup(id) { app.openItemId = id; app.route = 'group'; app.render(); },
     navigate(route) { app.route = route; app.render(); },
     load(project, audit, people, currentUserId) {
       app.store.replace({ project });
@@ -15924,7 +15271,6 @@ function screenFor(app, route) {
     case 'people': return peopleScreen(app);
     case 'quick': return quickScreen(app);
     case 'import': return importScreen(app);
-    case 'group': return app.openItemId ? groupScreen(app, app.openItemId) : itemsScreen(app);
     case 'codes': return codesScreen(app);
     case 'log': return logScreen(app);
     default: return welcomeScreen(app);
@@ -15942,11 +15288,10 @@ function publicApi(app) {
     PLATFORM_VERSION, isOlderThanCurrent, diffResults, snapshotResult,
     jurisdiction, jurisdictionOptions,
     newPerson, ROLES, ROLE, can, canCheckItem, peopleOptions,
-    newComment, openComments, statusBlocked, replyTo, closeComment, reopenComment, sheetReviewBlock, REVIEW_METHOD,
     ELEMENTS, searchElements, findElement, convertQuickToProject,
     FORM_SPECS, specFor, describeItem,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,
-    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers, evaluateGroup, autoAssign, unifyOn, seedFromGoverning, newTrialSection, actionsForMember,
+    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement, summariseModel, envelopeForces, envelopeReactions, buildCandidates, groupRestraints, toBaseFromSap,
     BUILD_NUMBER, buildLabel,

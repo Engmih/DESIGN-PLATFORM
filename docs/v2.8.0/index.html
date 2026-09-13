@@ -225,14 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.9.0';
+const PLATFORM_VERSION = '2.8.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.9.0',
-    date: '2026-09-12',
-    notes: 'Review comments, and how a review is recorded. A comment raised against an item blocks it from reaching checked or approved until it is closed, and answering it is not the same as closing it: the person who raised it decides that. The project chooses whether review happens on screen, on paper or both, which decides whether the sheet prints a comments box and signature lines; the comments themselves print either way, and a sheet printed with comments still open says so on its face.',
-  },
   {
     version: '2.8.0',
     date: '2026-09-12',
@@ -463,8 +458,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "98";
-const RAW_TIME = "2026-09-13T10:35:45.107Z";
+const RAW_NUMBER = "93";
+const RAW_TIME = "2026-09-13T09:46:13.766Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -913,18 +908,6 @@ const UI = {
   'Design as': 'يُصمَّم كـ',
   'Delete': 'حذف',
   'Members that govern': 'الأعضاء الحاكمة',
-  'Review comments': 'ملاحظات المراجعة',
-  'Raise a comment': 'إضافة ملاحظة',
-  'Add comment': 'أضف الملاحظة',
-  'Answer': 'ردّ',
-  'Close': 'إغلاق',
-  'Reopen': 'إعادة فتح',
-  'Open': 'مفتوحة',
-  'Answered': 'أُجيب عنها',
-  'Closed': 'مغلقة',
-  'None open': 'لا شيء مفتوح',
-  'How work is reviewed': 'كيف تُراجع الأعمال',
-  'Reviewer comments': 'ملاحظات المراجع',
   'Sections to try': 'القطاعات المقترحة',
   'Every section against every member': 'كل قطاع على كل عضو',
   'Add a section': 'أضف قطاعاً',
@@ -1649,118 +1632,6 @@ function defaultRegister() {
 }
 
 
-/* ===== src/core/review.js ===== */
-// core/review.js — review comments and how a review is recorded.
-//
-// The office may review on screen or on paper, and the platform should not
-// insist. What it does insist on is that a comment raised against an item is
-// answered before that item is marked as checked: a comment that is still open
-// is the checker saying the design is not yet right, and letting the status
-// move past it would quietly overrule them.
-//
-// Comments are kept whatever the method, because a comment written here costs
-// nothing and a reprint costs a morning. What the method changes is the sheet.
-
-
-const REVIEW_METHOD = {
-  ELECTRONIC: 'electronic',
-  PAPER: 'paper',
-  BOTH: 'both',
-};
-
-const REVIEW_METHOD_LABELS = {
-  electronic: 'On screen — comments and sign-off in the platform',
-  paper: 'On paper — the sheet prints a comments box and signature lines',
-  both: 'Both — comments here, final signature on paper',
-};
-
-const COMMENT_STATUS = {
-  OPEN: 'Open',
-  ANSWERED: 'Answered',
-  CLOSED: 'Closed',
-};
-
-function newComment({ text, by, role, about }) {
-  return {
-    id: uid('cmt'),
-    at: nowIso(),
-    by: by || 'unattributed',
-    role: role || null,
-    about: about || null,      // which check, or null for the item as a whole
-    text: String(text || '').trim(),
-    status: COMMENT_STATUS.OPEN,
-    reply: null,
-    repliedBy: null,
-    repliedAt: null,
-    closedBy: null,
-    closedAt: null,
-  };
-}
-
-function openComments(item) {
-  return (item.comments || []).filter((c) => c.status !== COMMENT_STATUS.CLOSED);
-}
-
-function unansweredComments(item) {
-  return (item.comments || []).filter((c) => c.status === COMMENT_STATUS.OPEN);
-}
-
-/**
- * Whether an item may move to a given status.
- *
- * The rule that matters: nothing reaches checked or approved while a comment is
- * still open. The person who raised it decides when it is closed, not the
- * person answering it.
- */
-function statusBlocked(item, status) {
-  if (status !== 'Checked' && status !== 'Approved') return null;
-  const open = openComments(item);
-  if (!open.length) return null;
-  const answered = open.filter((c) => c.status === COMMENT_STATUS.ANSWERED).length;
-  return `${open.length} review comment${open.length === 1 ? ' is' : 's are'} still open`
-    + (answered ? `, ${answered} answered but not closed` : '')
-    + '. A comment is closed by the person who raised it.';
-}
-
-function replyTo(item, id, text, by) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, reply: String(text).trim(), repliedBy: by, repliedAt: nowIso(), status: COMMENT_STATUS.ANSWERED }
-    : c));
-}
-
-function closeComment(item, id, by) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, status: COMMENT_STATUS.CLOSED, closedBy: by, closedAt: nowIso() }
-    : c));
-}
-
-function reopenComment(item, id) {
-  return (item.comments || []).map((c) => (c.id === id
-    ? { ...c, status: c.reply ? COMMENT_STATUS.ANSWERED : COMMENT_STATUS.OPEN, closedBy: null, closedAt: null }
-    : c));
-}
-
-/** What the calculation sheet should carry, given the project's method. */
-function sheetReviewBlock(project, item) {
-  const method = (project && project.reviewMethod) || REVIEW_METHOD.BOTH;
-  const comments = item.comments || [];
-  const open = openComments(item);
-  return {
-    method,
-    printCommentBox: method === REVIEW_METHOD.PAPER || method === REVIEW_METHOD.BOTH,
-    printSignatureLines: method === REVIEW_METHOD.PAPER || method === REVIEW_METHOD.BOTH,
-    printCommentList: comments.length > 0,
-    comments,
-    openCount: open.length,
-    statement: method === REVIEW_METHOD.ELECTRONIC
-      ? 'Reviewed in the platform. The comments raised and their answers are listed above and are held in the change log.'
-      : method === REVIEW_METHOD.PAPER
-        ? 'Reviewed on paper. Comments and signatures are written on this sheet.'
-        : 'Comments raised in the platform; the final signature is given on this sheet.',
-  };
-}
-
-
 /* ===== src/core/project.js ===== */
 // core/project.js — the project record: schema, defaults, validation, revisions.
 
@@ -1841,9 +1712,6 @@ function createProject(patch = {}) {
     // Dates
     startDate: today,
     dueDate: '',
-
-    // How work is reviewed on this project
-    reviewMethod: 'both',
 
     // Free text
     notes: '',
@@ -3072,7 +2940,6 @@ function createItem(patch = {}) {
     // demands a written reason. See runCfst.
     fire: { required: true, reason: '' },
 
-    comments: [],
     assumptions: [],
     result: null,
     ...patch,
@@ -11343,21 +11210,6 @@ textarea[lang="ar"]{direction:rtl;text-align:right}
 .cs-stamp--incomplete{color:var(--tg-notcov)}
 .cs-stamp--none{color:var(--tg-ink-40)}
 
-.cs-commentbox{border:1px solid var(--tg-ink);padding:6px 9px;margin-top:10px}
-.cs-commentbox b{font-size:8.4pt;display:block;margin-bottom:5px}
-.cs-commentbox__lines{display:grid;gap:9px}
-.cs-commentbox__line{border-bottom:1px solid var(--tg-rule)}
-
-.tg-comments{display:grid;gap:10px}
-.tg-comment{border:1px solid var(--tg-rule);border-left:4px solid var(--tg-ink-40);padding:10px 12px;background:#fff}
-.tg-comment--open{border-left-color:var(--tg-unsafe);background:var(--tg-unsafe-tint)}
-.tg-comment--answered{border-left-color:var(--tg-caution);background:var(--tg-caution-tint)}
-.tg-comment--closed{border-left-color:var(--tg-safe);background:#fff}
-.tg-comment__head{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:5px;font-size:12px}
-.tg-comment__when{margin-left:auto;color:var(--tg-ink-40);font-family:var(--tg-font-ident);font-size:11px}
-.tg-comment p{font-size:13px;margin:0 0 7px}
-.tg-comment__reply{border-top:1px solid var(--tg-rule);padding-top:6px;margin-bottom:7px;font-size:12.5px}
-
 .cs-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
 .cs-sign__box{border:1px solid var(--tg-rule);padding:5px 8px 8px}
 .cs-sign__role{font-size:7pt;letter-spacing:.1em;color:var(--tg-ink-40)}
@@ -12275,32 +12127,6 @@ function sheetBlocks(app, item) {
         : null,
     ))));
 
-  const review = sheetReviewBlock(p, item);
-  if (review.printCommentList) {
-    blocks.push(block(sectionHeading('7', 'Review comments')));
-    blocks.push(block(dataTable(
-      [
-        { label: 'Raised by', width: '18%', render: (c) => `${c.by}${c.role ? ` (${c.role})` : ''}` },
-        { label: 'Comment', render: (c) => c.text },
-        { label: 'Answer', render: (c) => c.reply || '—' },
-        { label: 'Status', width: '12%', render: (c) => c.status },
-      ],
-      review.comments,
-    )));
-    if (review.openCount) {
-      blocks.push(block(h('div', { class: 'cs-note cs-note--fail' },
-        h('b', null, `${review.openCount} comment${review.openCount === 1 ? ' is' : 's are'} still open`),
-        h('p', null, 'This sheet is printed with review comments outstanding. It is not a checked design.'))));
-    }
-  }
-  if (review.printCommentBox) {
-    blocks.push(block(h('div', { class: 'cs-commentbox' },
-      h('b', null, 'Reviewer comments'),
-      h('div', { class: 'cs-commentbox__lines' },
-        Array.from({ length: 6 }, () => h('div', { class: 'cs-commentbox__line' }))))));
-  }
-  blocks.push(block(h('p', { class: 'cs-cap' }, review.statement)));
-
   blocks.push(block(h('div', { class: 'cs-sign' },
     signBox('Designed', item.designer, item.revision),
     signBox('Checked', item.checker, item.revision),
@@ -12849,15 +12675,6 @@ function projectFormScreen(app, { mode = 'create' } = {}) {
         field({
           label: 'Start date', id: 'f-start',
           control: textInput({ id: 'f-start', type: 'date', value: draft.startDate, onInput: (v) => set('startDate', v) }),
-        }),
-        field({
-          label: 'How work is reviewed', id: 'f-review', span: true,
-          hint: 'Comments are available whatever you choose. This decides what the calculation sheet prints.',
-          control: select({
-            id: 'f-review', value: draft.reviewMethod || 'both',
-            options: Object.entries(REVIEW_METHOD_LABELS).map(([value, label]) => ({ value, label })),
-            onChange: (v) => set('reviewMethod', v),
-          }),
         }),
         field({
           label: 'Due date', id: 'f-due', error: err('dueDate'),
@@ -13629,82 +13446,7 @@ function designerScreen(app, itemId) {
       }),
     });
 
-    /* ---------- review comments ---------- */
-    const me = app.currentUser;
-    const draft = { text: '' };
-    const comments = sheet({
-      title: 'Review comments',
-      lede: 'A comment is answered by the designer and closed by whoever raised it. Nothing reaches checked or approved while one is still open.',
-      actions: [
-        openComments(it).length ? chip(`${openComments(it).length} open`, 'caution') : chip('None open', 'safe'),
-      ],
-      body: h('div', null,
-        h('div', { class: 'tg-grid', style: { marginBottom: '14px' } },
-          field({
-            label: 'Raise a comment', id: 'cmt-new', span: true,
-            hint: me ? `It will be recorded against ${me.name}.` : 'No engineer is signed in, so it will be recorded as unattributed.',
-            control: textArea({ id: 'cmt-new', value: '', rows: 3,
-              placeholder: 'What needs to change, and why.',
-              onInput: (v) => { draft.text = v; } }),
-          }),
-          h('div', { class: 'tg-row' }, button('Add comment', { onClick: () => {
-            const text = String(draft.text || '').trim();
-            if (!text) { toast('Write the comment first.', 'err'); return; }
-            const c = newComment({ text, by: app.actorName(), role: me ? me.role : null });
-            mutate((x) => ({ ...x, comments: [...(x.comments || []), c] }), {
-              audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                field: 'comment', to: text.slice(0, 120), reason: 'Review comment raised.', actor: app.actorName() },
-            });
-            toast('Comment raised and logged.', 'ok');
-          } })),
-        ),
-        (it.comments || []).length
-          ? h('div', { class: 'tg-comments' }, [...(it.comments || [])].reverse().map((c) => h('div', {
-            class: `tg-comment tg-comment--${c.status.toLowerCase()}`,
-          },
-            h('div', { class: 'tg-comment__head' },
-              chip(c.status, c.status === COMMENT_STATUS.OPEN ? 'unsafe' : c.status === COMMENT_STATUS.ANSWERED ? 'caution' : 'safe'),
-              h('b', null, c.by), h('span', null, c.role || ''),
-              h('span', { class: 'tg-comment__when' }, c.at.replace('T', ' ').slice(0, 16))),
-            h('p', null, c.text),
-            c.reply
-              ? h('div', { class: 'tg-comment__reply' },
-                h('b', null, `${c.repliedBy} replied`), h('p', null, c.reply))
-              : null,
-            h('div', { class: 'tg-row' },
-              c.status === COMMENT_STATUS.OPEN
-                ? button('Answer', { small: true, variant: 'ghost', onClick: () => {
-                  const text = window.prompt('Your answer to this comment:', '');
-                  if (text === null || !text.trim()) return;
-                  mutate((x) => ({ ...x, comments: replyTo(x, c.id, text, app.actorName()) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.reply', from: c.text.slice(0, 60), to: text.slice(0, 120),
-                      reason: 'Comment answered.', actor: app.actorName() },
-                  });
-                } })
-                : null,
-              c.status !== COMMENT_STATUS.CLOSED
-                ? button('Close', { small: true, onClick: () => {
-                  mutate((x) => ({ ...x, comments: closeComment(x, c.id, app.actorName()) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.closed', from: c.text.slice(0, 60), to: 'closed',
-                      reason: 'Comment closed by the reviewer.', actor: app.actorName() },
-                  });
-                } })
-                : button('Reopen', { small: true, variant: 'quiet', onClick: () => {
-                  mutate((x) => ({ ...x, comments: reopenComment(x, c.id) }), {
-                    audit: { kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(it), entityId: it.id,
-                      field: 'comment.reopened', to: c.text.slice(0, 120),
-                      reason: 'Comment reopened.', actor: app.actorName() },
-                  });
-                } }),
-            ),
-          )))
-          : h('p', { class: 'tg-muted', style: { fontSize: '13px' } }, 'No comments have been raised against this item.'),
-      ),
-    });
-
-    host.replaceChildren(verdict, inputs, checksSheet, isCfst ? assumptions : null, comments);
+    host.replaceChildren(verdict, inputs, checksSheet, isCfst ? assumptions : null);
   }
 
   if (!item().result) recalc();
@@ -13787,9 +13529,6 @@ function stepsTable(res, u) {
  * design. The control simply does not offer what the role may not do.
  */
 function allowedStatus(app, item, status) {
-  // An open comment outranks a role: it is the reviewer saying the design is
-  // not yet right, and the status must not step past it.
-  if (statusBlocked(item, status)) return false;
   if (!app.people.length || !app.currentUser) return true;
   if (status === ITEM_STATUS.DRAFT || status === ITEM_STATUS.FOR_CHECK) return true;
   if (status === ITEM_STATUS.SUPERSEDED) return app.can('editItems') || app.can('approve');
@@ -13799,8 +13538,6 @@ function allowedStatus(app, item, status) {
 }
 
 function statusHint(app, item) {
-  const blocked = statusBlocked(item, 'Checked');
-  if (blocked) return blocked;
   if (!app.people.length) return 'Add engineers to the register to attribute checks and approvals.';
   if (!app.currentUser) return 'No engineer is signed in, so every status is offered and changes are recorded as unattributed.';
   const verdict = canCheckItem(app.currentUser, item);
@@ -15942,7 +15679,6 @@ function publicApi(app) {
     PLATFORM_VERSION, isOlderThanCurrent, diffResults, snapshotResult,
     jurisdiction, jurisdictionOptions,
     newPerson, ROLES, ROLE, can, canCheckItem, peopleOptions,
-    newComment, openComments, statusBlocked, replyTo, closeComment, reopenComment, sheetReviewBlock, REVIEW_METHOD,
     ELEMENTS, searchElements, findElement, convertQuickToProject,
     FORM_SPECS, specFor, describeItem,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,
