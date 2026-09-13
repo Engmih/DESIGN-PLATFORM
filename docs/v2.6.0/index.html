@@ -225,14 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.7.0';
+const PLATFORM_VERSION = '2.6.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.7.0',
-    date: '2026-09-12',
-    notes: 'An imported section is no longer forced into an element by its shape alone. The shape and the material are both offered as choices, the platform suggests from the model without deciding, and the pair decides which elements can be designed. A steel tube is read as a steel tube: making it a filled composite column is now a decision taken here, not an assumption. Governing members are found as whole members — the one with the largest moment brings its own shear and axial force — instead of an envelope that combined actions from three different members into a load case that existed on none of them.',
-  },
   {
     version: '2.6.0',
     date: '2026-09-12',
@@ -448,8 +443,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "82";
-const RAW_TIME = "2026-09-13T07:55:32.933Z";
+const RAW_NUMBER = "74";
+const RAW_TIME = "2026-09-13T07:21:25.875Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -886,22 +881,6 @@ const UI = {
   'Foundations': 'الأساسات',
   'The results are missing': 'النتائج مفقودة',
   'Where each number comes from': 'من أين جاء كل رقم',
-  'What this export changes': 'ما يغيّره هذا التصدير',
-  'Nothing has moved': 'لم يتغيّر شيء',
-  'New': 'جديد',
-  'Changed': 'تغيّر',
-  'Unchanged': 'دون تغيير',
-  'Gone from the model': 'اختفى من الموديل',
-  'Also changed': 'تغيّر أيضاً',
-  'This section no longer matches the analysis model': 'هذا القطاع لم يعد مطابقاً لموديل التحليل',
-  'Worst P': 'أقصى P',
-  'Design as': 'يُصمَّم كـ',
-  'No element yet': 'لا يوجد عنصر بعد',
-  'Structural steel': 'حديد إنشائي',
-  'Reinforced concrete': 'خرسانة مسلحة',
-  'Steel and concrete acting together': 'حديد وخرسانة يعملان معاً',
-  'I or wide flange': 'قطاع I',
-  'Box, tube or pipe': 'صندوق أو ماسورة',
   'Back to items': 'رجوع للأصناف',
   'Add a results table': 'أضف جدول نتائج',
   'Section': 'القطاع',
@@ -3432,118 +3411,6 @@ function searchElements(query) {
 }
 
 
-/* ===== src/core/mapping.js ===== */
-// core/mapping.js — deciding what a section from an analysis model is designed as.
-//
-// The first version read the shape out of the model and picked an element from
-// it: an I-shape became a rolled beam, a box became a filled composite column.
-// That was wrong twice over. A shape does not carry a purpose — an I-shape is a
-// beam, a column or a tie depending on the job it is doing — and the model said
-// the box was A992 steel while the platform quietly assumed it was full of
-// concrete.
-//
-// So the shape and the material are both offered as choices, the platform
-// suggests but does not decide, and the list of elements that can be designed
-// follows from the pair.
-
-const MAP_SHAPE = {
-  I: 'I',
-  BOX: 'BOX',
-  CHANNEL: 'CHANNEL',
-  ANGLE: 'ANGLE',
-  RECT: 'RECT',
-  CIRC: 'CIRC',
-  OTHER: 'OTHER',
-};
-
-const MAP_SHAPE_LABELS = {
-  I: 'I or wide flange',
-  BOX: 'Box, tube or pipe',
-  CHANNEL: 'Channel',
-  ANGLE: 'Angle',
-  RECT: 'Solid rectangle',
-  CIRC: 'Solid circle',
-  OTHER: 'Other',
-};
-
-const MAP_MATERIAL = {
-  STEEL: 'STEEL',
-  CONCRETE: 'CONCRETE',
-  COMPOSITE: 'COMPOSITE',
-};
-
-const MAP_MATERIAL_LABELS = {
-  STEEL: 'Structural steel',
-  CONCRETE: 'Reinforced concrete',
-  COMPOSITE: 'Steel and concrete acting together',
-};
-
-/** What a SAP shape string most likely is. A suggestion, not a decision. */
-function guessShape(sapShape) {
-  const s = String(sapShape || '').toLowerCase();
-  if (/wide flange|^i\b|i\/|ibeam|i beam/.test(s)) return MAP_SHAPE.I;
-  if (/box|tube|pipe/.test(s)) return MAP_SHAPE.BOX;
-  if (/channel/.test(s)) return MAP_SHAPE.CHANNEL;
-  if (/angle/.test(s)) return MAP_SHAPE.ANGLE;
-  if (/rectangular|rectangle/.test(s)) return MAP_SHAPE.RECT;
-  if (/circle|circular/.test(s)) return MAP_SHAPE.CIRC;
-  return MAP_SHAPE.OTHER;
-}
-
-/**
- * What a SAP material name most likely is.
- *
- * Nothing in a model says a hollow section is filled with concrete, so a tube
- * of structural steel is read as steel. Making it composite is a decision the
- * engineer takes here, which is the point.
- */
-function guessMaterial(sapMaterial) {
-  const m = String(sapMaterial || '').toLowerCase();
-  if (/conc|c\d{2}\/|fc\d|rc\b/.test(m)) return MAP_MATERIAL.CONCRETE;
-  return MAP_MATERIAL.STEEL;
-}
-
-/**
- * Which elements can be designed for a given shape and material.
- * Entries name the element id from the catalogue; anything not listed simply
- * has no engine for that combination yet, and the picker says so.
- */
-const RULES = [
-  { shape: MAP_SHAPE.I, material: MAP_MATERIAL.STEEL, elements: ['steel-beam', 'plate-girder'] },
-  { shape: MAP_SHAPE.I, material: MAP_MATERIAL.CONCRETE, elements: [] },
-  { shape: MAP_SHAPE.I, material: MAP_MATERIAL.COMPOSITE, elements: [] },
-
-  { shape: MAP_SHAPE.BOX, material: MAP_MATERIAL.STEEL, elements: [] },
-  { shape: MAP_SHAPE.BOX, material: MAP_MATERIAL.COMPOSITE, elements: ['cfst-column'] },
-  { shape: MAP_SHAPE.BOX, material: MAP_MATERIAL.CONCRETE, elements: [] },
-
-  { shape: MAP_SHAPE.CIRC, material: MAP_MATERIAL.COMPOSITE, elements: ['cfst-column'] },
-  { shape: MAP_SHAPE.CIRC, material: MAP_MATERIAL.CONCRETE, elements: ['rc-column'] },
-
-  { shape: MAP_SHAPE.CHANNEL, material: MAP_MATERIAL.STEEL, elements: ['double-channel'] },
-
-  { shape: MAP_SHAPE.RECT, material: MAP_MATERIAL.CONCRETE, elements: ['rc-beam', 'rc-column'] },
-  { shape: MAP_SHAPE.RECT, material: MAP_MATERIAL.STEEL, elements: [] },
-];
-
-function elementsFor(shape, material) {
-  const rule = RULES.find((r) => r.shape === shape && r.material === material);
-  return rule ? rule.elements : [];
-}
-
-/** The element the platform suggests, or null when nothing fits the pair. */
-function suggestElement(shape, material) {
-  const list = elementsFor(shape, material);
-  return list.length ? list[0] : null;
-}
-
-function whyNothingFits(shape, material) {
-  return `No element is built for a ${(MAP_SHAPE_LABELS[shape] || shape).toLowerCase()} in `
-    + `${(MAP_MATERIAL_LABELS[material] || material).toLowerCase()}. Change the shape or the material if the model `
-    + 'described it loosely, or leave it out of the import and add it by hand.';
-}
-
-
 /* ===== src/core/sapImport.js ===== */
 // core/sapImport.js — reading a SAP2000 model and its results.
 //
@@ -3918,17 +3785,10 @@ function groupRestraints(model, reactions, maxBands = 6) {
     return [{ index: 1, min: list[0].N, max: list[0].N, members: list, worst: list[0].N }];
   }
 
-  const lowest = list[0].N;
-  const highest = list[list.length - 1].N;
-  const span = highest - lowest;
-
-  // A threshold measured only against the spread splits a set that barely
-  // spreads at all: two joints at 100 and 101 kN have a gap equal to their
-  // whole range and would come out as two groups. A regular grid must stay one
-  // group, so the spread has to be worth something in absolute terms first.
-  if (span <= 0.1 * highest) {
-    return [{ index: 1, min: lowest, max: highest, members: list, worst: highest }];
-  }
+  const span = list[list.length - 1].N - list[0].N;
+  // A gap counts as a break when it is a meaningful fraction of the whole
+  // spread. With everything close together there are no breaks and one group
+  // comes out, which is the right answer for a regular grid.
   const threshold = span * 0.12;
 
   const groups = [[list[0]]];
@@ -4061,67 +3921,6 @@ function compareImport(existingItems, candidates, chosenCases, loadFactor) {
     removed: rows.filter((r) => r.status === 'removed').length,
   };
   return { rows, counts, anyChange: counts.new + counts.changed + counts.removed > 0 };
-}
-
-
-/* ------------------------------------------------------------------ */
-/* governing members                                                   */
-/* ------------------------------------------------------------------ */
-
-/**
- * The members that govern a group, each taken whole.
- *
- * The first version took the worst moment from one member, the worst shear from
- * another and the worst axial force from a third, and designed for all three at
- * once. Every individual check came out safe, and the combined check was being
- * asked about a state of loading that existed on no member at all. It was
- * conservative, and it was not a real load case.
- *
- * So instead: find the member with the largest moment and take ITS shear and
- * ITS axial force; the member with the largest shear and take its moment and
- * axial force; the same again for axial force. Three members, three real states
- * of loading. Often two of them are the same member, and then there are two.
- */
-function governingMembers(members) {
-  const withForces = members.filter((m) => m.forces);
-  if (!withForces.length) return [];
-
-  const pick = (key, label) => {
-    let best = null;
-    for (const m of withForces) {
-      if (!best || m.forces[key].abs > best.forces[key].abs) best = m;
-    }
-    return {
-      governs: key,
-      label,
-      frame: best.frame,
-      M: best.forces.M3.value,
-      MCase: best.forces.M3.outputCase,
-      MStation: best.forces.M3.station,
-      V: best.forces.V2.value,
-      VCase: best.forces.V2.outputCase,
-      VStation: best.forces.V2.station,
-      P: best.forces.P.value,
-      PCase: best.forces.P.outputCase,
-      PStation: best.forces.P.station,
-    };
-  };
-
-  const candidates = [
-    pick('M3', 'Largest moment'),
-    pick('V2', 'Largest shear'),
-    pick('P', 'Largest axial force'),
-  ];
-
-  // Where one member governs more than one action, say so once rather than
-  // listing it twice.
-  const byFrame = new Map();
-  for (const c of candidates) {
-    const prev = byFrame.get(c.frame);
-    if (prev) prev.label = `${prev.label} and ${c.label.toLowerCase()}`;
-    else byFrame.set(c.frame, { ...c });
-  }
-  return [...byFrame.values()];
 }
 
 
@@ -13899,7 +13698,6 @@ function importScreen(app) {
     forcesText: null, forcesName: null, forces: null,
     reactionsText: null, reactionsName: null, reactions: null,
     chosenCases: [], loadFactor: 1.5, chosenSections: [], chosenBands: [],
-    mapping: {},   // section name -> { shape, material, element }
   });
 
   function readFile(accept, onDone) {
@@ -13967,8 +13765,7 @@ function importScreen(app) {
     app.store.update((s) => {
       for (const c of candidates) {
         const props = c.properties || {};
-        const mp = st.mapping[c.section] || {};
-        const isI = mp.element === 'steel-beam' || mp.element === 'plate-girder';
+        const isI = /wide flange|i\b/i.test(props.shape || '');
         // SAP model lengths are in metres; the parser leaves section dimensions
         // in model units, so convert here where the unit is known.
         const L = st.model.units.length === 'm' ? 1000 : st.model.units.length === 'cm' ? 10 : 1;
@@ -14010,10 +13807,6 @@ function importScreen(app) {
           program: `${st.model.program} ${st.model.version}`,
           section: c.section,
           cases: [...st.chosenCases],
-          shape: mp.shape,
-          material: mp.material,
-          element: mp.element,
-          governing: governingMembers(c.members),
           loadFactor: st.loadFactor,
           memberCount: c.members.length,
           // What the model said, kept so that a later edit here can be seen
@@ -14087,9 +13880,6 @@ function importScreen(app) {
   }
 
   function paint() {
-    // A state restored from an earlier session may predate the mapping, so it
-    // is filled in rather than assumed to exist.
-    if (!st.mapping) st.mapping = {};
     const ready = !!st.model && !!st.forces;
     const m = st.model;
 
@@ -14176,28 +13966,6 @@ function importScreen(app) {
     const env = envelopeForces(st.forces, st.chosenCases);
     const candidates = buildCandidates(m, env, null);
 
-    // The platform suggests a shape and a material from the model, and the pair
-    // decides which elements can be designed. Both are the engineer's to change.
-    for (const c of candidates) {
-      if (st.mapping[c.section]) continue;
-      const shape = guessShape((c.properties || {}).shape);
-      const material = guessMaterial((c.properties || {}).material);
-      st.mapping[c.section] = { shape, material, element: suggestElement(shape, material), suggested: true };
-    }
-
-    const mapOf = (section) => st.mapping[section] || {};
-    const setMap = (section, patch) => {
-      const cur = mapOf(section);
-      const next = { ...cur, ...patch, suggested: false };
-      if (patch.shape || patch.material) {
-        const allowed = elementsFor(next.shape, next.material);
-        if (!allowed.includes(next.element)) next.element = allowed[0] || null;
-      }
-      st.mapping[section] = next;
-      if (!next.element) st.chosenSections = st.chosenSections.filter((x) => x !== section);
-      render();
-    };
-
     // If anything was imported before, compare rather than silently duplicate.
     const already = (app.store.state.project.items || []).filter((x) => x.imported);
     const cmp = already.length ? compareImport(already, candidates, st.chosenCases, st.loadFactor) : null;
@@ -14248,8 +14016,7 @@ function importScreen(app) {
         table({
           columns: [
             { label: '', width: '40px', render: (c) => {
-              const mp = mapOf(c.section);
-              const box = h('input', { type: 'checkbox', id: `sec-${c.section}`, checked: st.chosenSections.includes(c.section), disabled: !mp.element });
+              const box = h('input', { type: 'checkbox', id: `sec-${c.section}`, checked: st.chosenSections.includes(c.section) });
               box.addEventListener('change', () => {
                 st.chosenSections = box.checked
                   ? [...st.chosenSections, c.section]
@@ -14259,39 +14026,13 @@ function importScreen(app) {
               return box;
             } },
             { label: 'Section', ident: true, render: (c) => c.section },
-            { label: 'Shape', width: '170px', render: (c) => select({
-              id: `shape-${c.section}`, value: mapOf(c.section).shape || '',
-              options: Object.entries(MAP_SHAPE_LABELS).map(([value, label]) => ({ value, label })),
-              onChange: (v) => setMap(c.section, { shape: v }),
-            }) },
-            { label: 'Material', width: '180px', render: (c) => select({
-              id: `mat-${c.section}`, value: mapOf(c.section).material || '',
-              options: Object.entries(MAP_MATERIAL_LABELS).map(([value, label]) => ({ value, label })),
-              onChange: (v) => setMap(c.section, { material: v }),
-            }) },
+            { label: 'Shape', render: (c) => (c.properties ? c.properties.shape : '—') },
+            { label: 'Material', render: (c) => (c.properties ? c.properties.material : '—') },
             { label: 'Members', align: 'right', render: (c) => String(c.members.length) },
             { label: 'Worst P', align: 'right', render: (c) => fmtWorst(c, 'P', 'force', app) },
             { label: 'Worst M₃', align: 'right', render: (c) => fmtWorst(c, 'M3', 'moment', app) },
             { label: 'Worst V₂', align: 'right', render: (c) => fmtWorst(c, 'V2', 'force', app) },
-            { label: 'Design as', width: '210px', render: (c) => {
-              const mp = mapOf(c.section);
-              const allowed = elementsFor(mp.shape, mp.material);
-              if (!allowed.length) {
-                return h('div', null,
-                  chip('No element yet', 'neutral'),
-                  h('div', { style: { fontSize: '10.5px', color: 'var(--tg-ink-40)', marginTop: '3px' } },
-                    whyNothingFits(mp.shape, mp.material)));
-              }
-              return h('div', null,
-                select({
-                  id: `elem-${c.section}`, value: mp.element || '',
-                  options: allowed.map((id) => ({ value: id, label: (findElement(id) || {}).name || id })),
-                  onChange: (v) => setMap(c.section, { element: v }),
-                }),
-                mp.suggested
-                  ? h('div', { style: { fontSize: '10.5px', color: 'var(--tg-ink-40)', marginTop: '3px' } }, 'Suggested from the model. Change it if the model described it loosely.')
-                  : null);
-            } },
+            { label: 'Maps to', render: (c) => mapsTo(c) },
           ],
           rows: candidates,
           empty: 'No sections found.',
@@ -15212,9 +14953,7 @@ function publicApi(app) {
     ELEMENTS, searchElements, findElement, convertQuickToProject,
     FORM_SPECS, specFor, describeItem,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,
-    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers,
-    MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement,
-    MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement, summariseModel, envelopeForces, envelopeReactions, buildCandidates, groupRestraints, toBaseFromSap,
+    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, summariseModel, envelopeForces, envelopeReactions, buildCandidates, groupRestraints, toBaseFromSap,
     BUILD_NUMBER, buildLabel,
     lang, setLang, t, explainTerm: explain, LANGS, sheetLanguage, setSheetLanguage, UI, GLOSSARY,
     app,

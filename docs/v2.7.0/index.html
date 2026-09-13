@@ -448,8 +448,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "82";
-const RAW_TIME = "2026-09-13T07:55:32.933Z";
+const RAW_NUMBER = "80";
+const RAW_TIME = "2026-09-13T07:54:53.142Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -14087,9 +14087,6 @@ function importScreen(app) {
   }
 
   function paint() {
-    // A state restored from an earlier session may predate the mapping, so it
-    // is filled in rather than assumed to exist.
-    if (!st.mapping) st.mapping = {};
     const ready = !!st.model && !!st.forces;
     const m = st.model;
 
