@@ -225,19 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.14.0';
+const PLATFORM_VERSION = '2.12.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.14.0',
-    date: '2026-09-12',
-    notes: 'C_b is computed from the moment diagram rather than assumed. The diagram is already in the SAP export, so the import keeps it and applies Equation F1-1 to each member: a beam that would have been designed on C_b of 1.0 out of caution gets the factor its own moment shape earns, which on the model tested raised the nominal moment from 79 to 131 kN.m. Every member carries its own value, because using one across a group would hand the flattest member the benefit earned by the most curved. The implementation was checked against the published values for uniform moment, a uniformly loaded span, a central point load and equal opposite end moments, and agrees with all four. Where no diagram was imported the factor is still entered as a case and the sheet says which it was.',
-  },
-  {
-    version: '2.13.0',
-    date: '2026-09-12',
-    notes: 'A trial section in a group can now be a different form of member, not only a different size of the same one. A pair of channels sits in the same comparison as a rolled I-section, each run by its own engine against every member, so the choice between them is made on covered members and mass per metre rather than on memory. The alternatives offered are the ones that make sense for the member: a concrete beam is not asked whether it would rather be two channels.',
-  },
   {
     version: '2.12.0',
     date: '2026-09-12',
@@ -488,8 +478,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "118";
-const RAW_TIME = "2026-09-14T09:00:56.405Z";
+const RAW_NUMBER = "109";
+const RAW_TIME = "2026-09-14T08:24:42.351Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -959,9 +949,6 @@ const UI = {
   'Unnamed': 'بلا اسم',
   'Every section against every member': 'كل قطاع على كل عضو',
   'Add a section': 'أضف قطاعاً',
-  'Rolled or welded I-section': 'قطاع I درفلة أو ملحوم',
-  'Welded plate girder': 'كمرة ملحومة',
-  'Double channel': 'قناة مزدوجة',
   'Use for the whole group': 'استخدمه للمجموعة كلها',
   'Assign the lightest section that works': 'أسند أخف قطاع يصلح',
   'Not assigned': 'غير مُسنَد',
@@ -4314,103 +4301,6 @@ function governingMembers(members) {
 }
 
 
-/* ------------------------------------------------------------------ */
-/* moment diagrams                                                     */
-/* ------------------------------------------------------------------ */
-
-/**
- * The moment at every station along each member, for one output case.
- *
- * The envelope alone cannot give C_b: that factor depends on the shape of the
- * diagram between brace points, not on its peak. The diagram is already in the
- * export, so keeping it turns C_b from something assumed into something
- * computed. Only the case that governs each member is kept, which is a few
- * hundred numbers rather than the whole results table.
- */
-function momentDiagrams(forcesTable, chosenCases) {
-  const wanted = new Set(chosenCases);
-  const u = forcesTable.unitOf;
-  const byFrame = new Map();
-
-  for (const r of forcesTable.rows) {
-    if (wanted.size && !wanted.has(r.OutputCase)) continue;
-    const frame = r.Frame;
-    if (!frame) continue;
-    const station = toBaseFromSap(r.Station, u.Station);
-    const M = toBaseFromSap(r.M3, u.M3);
-    if (!Number.isFinite(station) || !Number.isFinite(M)) continue;
-    if (!byFrame.has(frame)) byFrame.set(frame, new Map());
-    const cases = byFrame.get(frame);
-    if (!cases.has(r.OutputCase)) cases.set(r.OutputCase, []);
-    cases.get(r.OutputCase).push({ x: station, M });
-  }
-
-  const out = new Map();
-  for (const [frame, cases] of byFrame) {
-    let best = null;
-    for (const [outputCase, points] of cases) {
-      points.sort((a, b) => a.x - b.x);
-      const peak = points.reduce((a, p) => Math.max(a, Math.abs(p.M)), 0);
-      if (!best || peak > best.peak) best = { outputCase, points, peak };
-    }
-    if (best) out.set(frame, best);
-  }
-  return out;
-}
-
-/**
- * C_b for one unbraced length, from AISC 360-16 Equation F1-1:
- *
- *     C_b = 12.5 M_max / (2.5 M_max + 3 M_A + 4 M_B + 3 M_C)
- *
- * with M_A, M_B and M_C the absolute moments at the quarter, centre and three
- * quarter points of the segment. Where the segment is not stated it is taken as
- * the whole member, which is the conservative reading of an unbraced beam.
- */
-function computeCb(diagram, segmentStart, segmentEnd) {
-  if (!diagram || !diagram.points || diagram.points.length < 3) return null;
-  const pts = diagram.points;
-  const a = segmentStart ?? pts[0].x;
-  const b = segmentEnd ?? pts[pts.length - 1].x;
-  if (!(b > a)) return null;
-
-  const at = (x) => {
-    if (x <= pts[0].x) return Math.abs(pts[0].M);
-    if (x >= pts[pts.length - 1].x) return Math.abs(pts[pts.length - 1].M);
-    for (let i = 1; i < pts.length; i += 1) {
-      if (pts[i].x >= x) {
-        const p0 = pts[i - 1];
-        const p1 = pts[i];
-        const t = p1.x === p0.x ? 0 : (x - p0.x) / (p1.x - p0.x);
-        return Math.abs(p0.M + t * (p1.M - p0.M));
-      }
-    }
-    return Math.abs(pts[pts.length - 1].M);
-  };
-
-  const inSegment = pts.filter((p) => p.x >= a - 1e-6 && p.x <= b + 1e-6);
-  const Mmax = Math.max(...inSegment.map((p) => Math.abs(p.M)), at(a), at(b));
-  if (!(Mmax > 0)) return null;
-
-  const L = b - a;
-  const MA = at(a + L / 4);
-  const MB = at(a + L / 2);
-  const MC = at(a + (3 * L) / 4);
-
-  const denom = 2.5 * Mmax + 3 * MA + 4 * MB + 3 * MC;
-  if (!(denom > 0)) return null;
-  const Cb = (12.5 * Mmax) / denom;
-
-  return {
-    Cb: Math.min(Cb, 3.0),
-    Mmax, MA, MB, MC,
-    outputCase: diagram.outputCase,
-    segment: { start: a, end: b, length: L },
-    capped: Cb > 3.0,
-  };
-}
-
-
 /* ===== src/modules/cfst/assumptions.js ===== */
 // modules/cfst/assumptions.js — the assumption manager.
 //
@@ -5713,10 +5603,6 @@ function buildSteelBeamContext(item) {
     geometry: {
       Lb: Number(item.geometry.Lb) || 0,
       Cb: Number(item.geometry.Cb) || 1,
-      // Carried through so the calculation can say whether C_b was computed
-      // from a diagram or assumed. Without it every sheet claimed it was
-      // assumed, including the ones where it was not.
-      CbFrom: item.geometry.CbFrom || null,
       span: Number(item.geometry.span) || 0,
     },
     actions: item.actions,
@@ -6015,50 +5901,14 @@ function runDesign(registry, item) {
 
 let counter = 0;
 
-/**
- * The forms a trial section can take.
- *
- * A group of beams is not only a choice between one I-section and another: a
- * pair of channels is a real alternative that an office reaches for, and until
- * it could be put in the same comparison the choice was being made outside the
- * platform on memory alone. So a trial carries its own kind, and the engine
- * that runs it follows from that rather than from the item it belongs to.
- */
-const TRIAL_KINDS = {
-  steelbeam: { label: 'Rolled or welded I-section', make: createSteelBeamItem },
-  plategirder: { label: 'Welded plate girder', make: createPlateGirderItem },
-  doublechannel: { label: 'Double channel', make: createDoubleChannelItem },
-  rcbeam: { label: 'Reinforced concrete beam', make: createBeamItem },
-  rccolumn: { label: 'Reinforced concrete column', make: createColumnItem },
-  cfst: { label: 'Filled tubular column', make: null },
-};
-
-/** Which forms make sense to compare against a given item. */
-function trialKindsFor(item) {
-  const k = item.kind || 'cfst';
-  if (k === 'steelbeam' || k === 'plategirder' || k === 'doublechannel') {
-    return ['steelbeam', 'plategirder', 'doublechannel'];
-  }
-  if (k === 'rcbeam') return ['rcbeam'];
-  if (k === 'rccolumn' || k === 'cfst') return ['rccolumn', 'cfst'];
-  return [k];
-}
-
 /** A section the engineer has decided to try. Not a result: a candidate. */
 function newTrialSection(item, patch = {}) {
   counter += 1;
-  const kind = patch.kind || item.kind || 'cfst';
-  // A trial of a different kind starts from that kind's own defaults, because
-  // a double channel has nothing to inherit from an I-section's dimensions.
-  const base = kind === (item.kind || 'cfst')
-    ? { geometry: item.geometry, materials: item.materials }
-    : (TRIAL_KINDS[kind] && TRIAL_KINDS[kind].make ? TRIAL_KINDS[kind].make({}) : { geometry: {}, materials: {} });
   return {
     id: `sec_${counter}`,
-    kind,
     name: patch.name || `Section ${counter}`,
-    geometry: { ...base.geometry, ...(patch.geometry || {}) },
-    materials: { ...base.materials, ...(patch.materials || {}) },
+    geometry: { ...item.geometry, ...(patch.geometry || {}) },
+    materials: { ...item.materials, ...(patch.materials || {}) },
     note: patch.note || '',
   };
 }
@@ -6081,7 +5931,7 @@ function seedFromGoverning(item, governing) {
 
 /** The actions on one member, shaped for whichever element this group is. */
 function actionsForMember(item, member) {
-  const k = typeof item === 'string' ? item : item.kind;
+  const k = item.kind;
   if (k === 'steelbeam') return { Mu: Math.abs(member.M), Vu: Math.abs(member.V) };
   if (k === 'rcbeam') return { Mu: Math.abs(member.M), Qu: Math.abs(member.V), Tu: 0 };
   if (k === 'rccolumn') return { Nu: Math.abs(member.P), Mx: Math.abs(member.M), My: 0 };
@@ -6106,35 +5956,22 @@ function evaluateGroup(registry, item, members, sections, loadFactor = 1) {
     // one set left every action at zero and every member reading safe.
     const member = {
       frame: raw.frame,
-      Cb: raw.Cb,
       M: raw.M !== undefined && raw.M !== null ? raw.M : (raw.M3 || 0),
       V: raw.V !== undefined && raw.V !== null ? raw.V : (raw.V2 || 0),
       P: raw.P || 0,
     };
+    const base = actionsForMember(item, {
+      M: member.M * loadFactor,
+      V: member.V * loadFactor,
+      P: member.P * loadFactor,
+    });
     const cells = {};
     for (const sec of sections) {
-      // The trial decides which engine runs, and therefore which actions it
-      // needs. Reading the item's kind here would have sent a double channel's
-      // moments into the I-section engine.
-      const kind = sec.kind || item.kind || 'cfst';
-      const maker = TRIAL_KINDS[kind] && TRIAL_KINDS[kind].make;
-      const shell = kind === (item.kind || 'cfst') ? item : (maker ? maker({}) : item);
-      const base = actionsForMember(kind, {
-        M: member.M * loadFactor,
-        V: member.V * loadFactor,
-        P: member.P * loadFactor,
-      });
-      // Each member has its own moment diagram, so each has its own C_b.
-      // Using one value across the group would hand the flattest member the
-      // benefit earned by the most curved one.
-      const cbOverride = (kind === 'steelbeam' && Number.isFinite(raw.Cb)) ? { Cb: raw.Cb } : {};
       const trial = {
-        ...shell,
-        kind,
-        code: shell.code,
-        geometry: { ...shell.geometry, ...sec.geometry, ...cbOverride },
-        materials: { ...shell.materials, ...sec.materials },
-        actions: { ...shell.actions, ...base },
+        ...item,
+        geometry: { ...item.geometry, ...sec.geometry },
+        materials: { ...item.materials, ...sec.materials },
+        actions: { ...item.actions, ...base },
       };
       let res;
       try {
@@ -6149,7 +5986,7 @@ function evaluateGroup(registry, item, members, sections, loadFactor = 1) {
         governing: res.summary.governing ? res.summary.governing.title : null,
       };
     }
-    rows.push({ frame: member.frame, member, cells });
+    rows.push({ frame: member.frame, actions: base, member, cells });
   }
 
   const summary = {};
@@ -9088,9 +8925,7 @@ function aiscb_flexure(ctx, sc) {
     input({
       symbol: 'C_b', description: 'Lateral torsional buckling modification factor',
       value: Cb,
-      note: geometry.CbFrom
-        ? `Computed from the moment diagram of member ${geometry.CbFrom} using AISC 360-16 Equation F1-1, rather than assumed. It applies to the member as a whole; if the compression flange is braced part way along, the segment between braces gives a different value.`
-        : `${describeCb(Cb)} Taken as entered: C_b depends on the shape of the moment diagram between brace points, which this engine does not read unless a diagram was imported. Confirm the case matches this member before issue.`,
+      note: `${describeCb(Cb)} Taken as entered: C_b depends on the shape of the moment diagram between brace points, which this engine does not read. Confirm the case matches this member before issue.`,
     }),
     step({
       code: AISCF, clause: 'F2', symbol: 'M_n', description: `Nominal flexural strength. ${regime}`,
@@ -14921,7 +14756,6 @@ function importScreen(app) {
     if (!st.chosenSections.length) { toast('Choose at least one section.', 'err'); return; }
 
     const env = envelopeForces(st.forces, st.chosenCases);
-    const diagrams = momentDiagrams(st.forces, st.chosenCases);
     const candidates = buildCandidates(st.model, env, null)
       .filter((c) => st.chosenSections.includes(c.section));
 
@@ -14965,15 +14799,6 @@ function importScreen(app) {
           item.geometry = { ...item.geometry, d: dims.d, bf: dims.b, tf: dims.tf, tw: dims.tw, catalogue: matched ? matched.name : '' };
           if (matched) item.name = `${c.section} — ${matched.name}`;
           item.actions = { Mu: worst.M * st.loadFactor, Vu: worst.V * st.loadFactor };
-          // C_b comes from the moment diagram of the member that governs,
-          // rather than being assumed. 1.0 remains the fallback when the export
-          // carried no diagram for it.
-          const govFrame = (governingMembers(c.members).find((x) => x.governs === 'M3') || {}).frame;
-          const govDia = govFrame ? diagrams.get(govFrame) : null;
-          const govCb = govDia ? computeCb(govDia) : null;
-          if (govCb) {
-            item.geometry = { ...item.geometry, Cb: Number(govCb.Cb.toFixed(3)), CbFrom: govFrame };
-          }
         } else if (mp.element === 'cfst-column') {
           item = createItem({ ...common, category: 'CFST column' });
           item.geometry = {
@@ -15017,20 +14842,14 @@ function importScreen(app) {
             : mp.element === 'cfst-column'
               ? { 'geometry.d': item.geometry.d, 'geometry.b': item.geometry.b, 'geometry.t': item.geometry.t }
               : { 'geometry.b': item.geometry.b, 'geometry.t': item.geometry.t },
-          members: c.members.map((m) => {
-            const dia = diagrams.get(m.frame);
-            const cb = dia ? computeCb(dia) : null;
-            return {
+          members: c.members.map((m) => ({
             frame: m.frame,
-            Cb: cb ? Number(cb.Cb.toFixed(3)) : null,
-            CbCase: cb ? cb.outputCase : null,
-            diagram: dia ? dia.points.map((pt) => [Math.round(pt.x), Math.round(pt.M)]) : null,
             M3: m.forces ? m.forces.M3.value : null,
             M3Case: m.forces ? m.forces.M3.outputCase : null,
             M3Station: m.forces ? m.forces.M3.station : null,
             V2: m.forces ? m.forces.V2.value : null,
             V2Station: m.forces ? m.forces.V2.station : null,
-          }; }),
+          })),
           worstP: worst.P,
         };
 
@@ -15412,7 +15231,7 @@ function groupScreen(app, itemId) {
     const u = units();
     const members = imp.members.filter((m) => (m.M3 !== null && m.M3 !== undefined) || (m.M !== null && m.M !== undefined) || m.P);
     const matrix = evaluateGroup(app.registry, it, members, g.sections, 1);
-    const specOf = (sec) => specFor({ ...it, kind: sec.kind || it.kind });
+    const spec = specFor(it);
 
     /* ---- governing members ---- */
     const governing = sheet({
@@ -15443,7 +15262,6 @@ function groupScreen(app, itemId) {
      * picked. Every field the design screen offers is offered here.
      */
     const sectionFields = (sec) => {
-      const spec = specOf(sec);
       if (!spec) return null;
       const fields = spec.groups.flatMap((grp) => grp.fields)
         .filter((f) => /^(geometry|materials|soil)\./.test(f.path));
@@ -15531,30 +15349,12 @@ function groupScreen(app, itemId) {
     const sectionsSheet = sheet({
       title: 'Sections to try',
       lede: 'Size as many as the job needs. Every one is checked against every member below, so the choice between them is made on results rather than on judgement alone.',
-      actions: trialKindsFor(it).map((k) => button(`Add ${TRIAL_KINDS[k].label.toLowerCase()}`, {
-        variant: 'ghost', small: true,
-        onClick: () => mutate((x) => ({
-          ...x,
-          group: { ...x.group, sections: [...x.group.sections, newTrialSection(x, { kind: k, name: TRIAL_KINDS[k].label })] },
-        })),
-      })),
+      actions: [button('Add a section', { variant: 'ghost', small: true,
+        onClick: () => mutate((x) => ({ ...x, group: { ...x.group, sections: [...x.group.sections, newTrialSection(x)] } })) })],
       body: h('div', { class: 'tg-form' }, g.sections.map((sec) => {
         const sm = matrix.summary[sec.id] || {};
         return h('div', { class: 'tg-trial' },
           h('div', { class: 'tg-trial__head' },
-            select({
-              id: `kind-${sec.id}`, value: sec.kind || it.kind || 'cfst',
-              options: trialKindsFor(it).map((k) => ({ value: k, label: TRIAL_KINDS[k].label })),
-              onChange: (v) => mutate((x) => ({
-                ...x,
-                group: {
-                  ...x.group,
-                  sections: x.group.sections.map((s2) => (s2.id === sec.id
-                    ? { ...newTrialSection(x, { kind: v }), id: s2.id, name: TRIAL_KINDS[v].label }
-                    : s2)),
-                },
-              })),
-            }),
             textInput({ id: `name-${sec.id}`, value: sec.name,
               onInput: (v) => { sec.name = v; } }),
             chip(`${sm.safe || 0} of ${sm.total || 0} members safe`, sm.coversAll ? 'safe' : (sm.safe ? 'caution' : 'unsafe')),
@@ -15687,10 +15487,6 @@ function peakFor(matrix, sec) {
 
 /** Mass per metre, which is the number a lighter section is chosen for. */
 function massOf(sec) {
-  if (sec.kind === 'doublechannel') {
-    const ch = channelByName(sec.geometry && sec.geometry.channel);
-    return ch ? `${(ch.massPerMetre * 2).toFixed(1)} kg/m` : null;
-  }
   const cat = sec.geometry && sec.geometry.catalogue ? sectionByName(sec.geometry.catalogue) : null;
   if (cat) return `${cat.massPerMetre} kg/m`;
   try {
@@ -16554,7 +16350,7 @@ function publicApi(app) {
     ELEMENTS, searchElements, findElement, convertQuickToProject,
     FORM_SPECS, specFor, describeItem,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,
-    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers, momentDiagrams, computeCb, evaluateGroup, autoAssign, unifyOn, seedFromGoverning, newTrialSection, actionsForMember, groupVerdict, describeGroupVerdict, TRIAL_KINDS, trialKindsFor,
+    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers, evaluateGroup, autoAssign, unifyOn, seedFromGoverning, newTrialSection, actionsForMember, groupVerdict, describeGroupVerdict,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement, summariseModel, envelopeForces, envelopeReactions, buildCandidates, groupRestraints, toBaseFromSap,
     BUILD_NUMBER, buildLabel,

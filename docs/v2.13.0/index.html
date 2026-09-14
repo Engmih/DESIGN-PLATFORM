@@ -225,14 +225,9 @@ function formatNumber(value, decimals = 3) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '2.14.0';
+const PLATFORM_VERSION = '2.13.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '2.14.0',
-    date: '2026-09-12',
-    notes: 'C_b is computed from the moment diagram rather than assumed. The diagram is already in the SAP export, so the import keeps it and applies Equation F1-1 to each member: a beam that would have been designed on C_b of 1.0 out of caution gets the factor its own moment shape earns, which on the model tested raised the nominal moment from 79 to 131 kN.m. Every member carries its own value, because using one across a group would hand the flattest member the benefit earned by the most curved. The implementation was checked against the published values for uniform moment, a uniformly loaded span, a central point load and equal opposite end moments, and agrees with all four. Where no diagram was imported the factor is still entered as a case and the sheet says which it was.',
-  },
   {
     version: '2.13.0',
     date: '2026-09-12',
@@ -488,8 +483,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "118";
-const RAW_TIME = "2026-09-14T09:00:56.405Z";
+const RAW_NUMBER = "113";
+const RAW_TIME = "2026-09-14T08:39:12.618Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -4314,103 +4309,6 @@ function governingMembers(members) {
 }
 
 
-/* ------------------------------------------------------------------ */
-/* moment diagrams                                                     */
-/* ------------------------------------------------------------------ */
-
-/**
- * The moment at every station along each member, for one output case.
- *
- * The envelope alone cannot give C_b: that factor depends on the shape of the
- * diagram between brace points, not on its peak. The diagram is already in the
- * export, so keeping it turns C_b from something assumed into something
- * computed. Only the case that governs each member is kept, which is a few
- * hundred numbers rather than the whole results table.
- */
-function momentDiagrams(forcesTable, chosenCases) {
-  const wanted = new Set(chosenCases);
-  const u = forcesTable.unitOf;
-  const byFrame = new Map();
-
-  for (const r of forcesTable.rows) {
-    if (wanted.size && !wanted.has(r.OutputCase)) continue;
-    const frame = r.Frame;
-    if (!frame) continue;
-    const station = toBaseFromSap(r.Station, u.Station);
-    const M = toBaseFromSap(r.M3, u.M3);
-    if (!Number.isFinite(station) || !Number.isFinite(M)) continue;
-    if (!byFrame.has(frame)) byFrame.set(frame, new Map());
-    const cases = byFrame.get(frame);
-    if (!cases.has(r.OutputCase)) cases.set(r.OutputCase, []);
-    cases.get(r.OutputCase).push({ x: station, M });
-  }
-
-  const out = new Map();
-  for (const [frame, cases] of byFrame) {
-    let best = null;
-    for (const [outputCase, points] of cases) {
-      points.sort((a, b) => a.x - b.x);
-      const peak = points.reduce((a, p) => Math.max(a, Math.abs(p.M)), 0);
-      if (!best || peak > best.peak) best = { outputCase, points, peak };
-    }
-    if (best) out.set(frame, best);
-  }
-  return out;
-}
-
-/**
- * C_b for one unbraced length, from AISC 360-16 Equation F1-1:
- *
- *     C_b = 12.5 M_max / (2.5 M_max + 3 M_A + 4 M_B + 3 M_C)
- *
- * with M_A, M_B and M_C the absolute moments at the quarter, centre and three
- * quarter points of the segment. Where the segment is not stated it is taken as
- * the whole member, which is the conservative reading of an unbraced beam.
- */
-function computeCb(diagram, segmentStart, segmentEnd) {
-  if (!diagram || !diagram.points || diagram.points.length < 3) return null;
-  const pts = diagram.points;
-  const a = segmentStart ?? pts[0].x;
-  const b = segmentEnd ?? pts[pts.length - 1].x;
-  if (!(b > a)) return null;
-
-  const at = (x) => {
-    if (x <= pts[0].x) return Math.abs(pts[0].M);
-    if (x >= pts[pts.length - 1].x) return Math.abs(pts[pts.length - 1].M);
-    for (let i = 1; i < pts.length; i += 1) {
-      if (pts[i].x >= x) {
-        const p0 = pts[i - 1];
-        const p1 = pts[i];
-        const t = p1.x === p0.x ? 0 : (x - p0.x) / (p1.x - p0.x);
-        return Math.abs(p0.M + t * (p1.M - p0.M));
-      }
-    }
-    return Math.abs(pts[pts.length - 1].M);
-  };
-
-  const inSegment = pts.filter((p) => p.x >= a - 1e-6 && p.x <= b + 1e-6);
-  const Mmax = Math.max(...inSegment.map((p) => Math.abs(p.M)), at(a), at(b));
-  if (!(Mmax > 0)) return null;
-
-  const L = b - a;
-  const MA = at(a + L / 4);
-  const MB = at(a + L / 2);
-  const MC = at(a + (3 * L) / 4);
-
-  const denom = 2.5 * Mmax + 3 * MA + 4 * MB + 3 * MC;
-  if (!(denom > 0)) return null;
-  const Cb = (12.5 * Mmax) / denom;
-
-  return {
-    Cb: Math.min(Cb, 3.0),
-    Mmax, MA, MB, MC,
-    outputCase: diagram.outputCase,
-    segment: { start: a, end: b, length: L },
-    capped: Cb > 3.0,
-  };
-}
-
-
 /* ===== src/modules/cfst/assumptions.js ===== */
 // modules/cfst/assumptions.js — the assumption manager.
 //
@@ -5713,10 +5611,6 @@ function buildSteelBeamContext(item) {
     geometry: {
       Lb: Number(item.geometry.Lb) || 0,
       Cb: Number(item.geometry.Cb) || 1,
-      // Carried through so the calculation can say whether C_b was computed
-      // from a diagram or assumed. Without it every sheet claimed it was
-      // assumed, including the ones where it was not.
-      CbFrom: item.geometry.CbFrom || null,
       span: Number(item.geometry.span) || 0,
     },
     actions: item.actions,
@@ -6106,7 +6000,6 @@ function evaluateGroup(registry, item, members, sections, loadFactor = 1) {
     // one set left every action at zero and every member reading safe.
     const member = {
       frame: raw.frame,
-      Cb: raw.Cb,
       M: raw.M !== undefined && raw.M !== null ? raw.M : (raw.M3 || 0),
       V: raw.V !== undefined && raw.V !== null ? raw.V : (raw.V2 || 0),
       P: raw.P || 0,
@@ -6124,15 +6017,11 @@ function evaluateGroup(registry, item, members, sections, loadFactor = 1) {
         V: member.V * loadFactor,
         P: member.P * loadFactor,
       });
-      // Each member has its own moment diagram, so each has its own C_b.
-      // Using one value across the group would hand the flattest member the
-      // benefit earned by the most curved one.
-      const cbOverride = (kind === 'steelbeam' && Number.isFinite(raw.Cb)) ? { Cb: raw.Cb } : {};
       const trial = {
         ...shell,
         kind,
         code: shell.code,
-        geometry: { ...shell.geometry, ...sec.geometry, ...cbOverride },
+        geometry: { ...shell.geometry, ...sec.geometry },
         materials: { ...shell.materials, ...sec.materials },
         actions: { ...shell.actions, ...base },
       };
@@ -9088,9 +8977,7 @@ function aiscb_flexure(ctx, sc) {
     input({
       symbol: 'C_b', description: 'Lateral torsional buckling modification factor',
       value: Cb,
-      note: geometry.CbFrom
-        ? `Computed from the moment diagram of member ${geometry.CbFrom} using AISC 360-16 Equation F1-1, rather than assumed. It applies to the member as a whole; if the compression flange is braced part way along, the segment between braces gives a different value.`
-        : `${describeCb(Cb)} Taken as entered: C_b depends on the shape of the moment diagram between brace points, which this engine does not read unless a diagram was imported. Confirm the case matches this member before issue.`,
+      note: `${describeCb(Cb)} Taken as entered: C_b depends on the shape of the moment diagram between brace points, which this engine does not read. Confirm the case matches this member before issue.`,
     }),
     step({
       code: AISCF, clause: 'F2', symbol: 'M_n', description: `Nominal flexural strength. ${regime}`,
@@ -14921,7 +14808,6 @@ function importScreen(app) {
     if (!st.chosenSections.length) { toast('Choose at least one section.', 'err'); return; }
 
     const env = envelopeForces(st.forces, st.chosenCases);
-    const diagrams = momentDiagrams(st.forces, st.chosenCases);
     const candidates = buildCandidates(st.model, env, null)
       .filter((c) => st.chosenSections.includes(c.section));
 
@@ -14965,15 +14851,6 @@ function importScreen(app) {
           item.geometry = { ...item.geometry, d: dims.d, bf: dims.b, tf: dims.tf, tw: dims.tw, catalogue: matched ? matched.name : '' };
           if (matched) item.name = `${c.section} — ${matched.name}`;
           item.actions = { Mu: worst.M * st.loadFactor, Vu: worst.V * st.loadFactor };
-          // C_b comes from the moment diagram of the member that governs,
-          // rather than being assumed. 1.0 remains the fallback when the export
-          // carried no diagram for it.
-          const govFrame = (governingMembers(c.members).find((x) => x.governs === 'M3') || {}).frame;
-          const govDia = govFrame ? diagrams.get(govFrame) : null;
-          const govCb = govDia ? computeCb(govDia) : null;
-          if (govCb) {
-            item.geometry = { ...item.geometry, Cb: Number(govCb.Cb.toFixed(3)), CbFrom: govFrame };
-          }
         } else if (mp.element === 'cfst-column') {
           item = createItem({ ...common, category: 'CFST column' });
           item.geometry = {
@@ -15017,20 +14894,14 @@ function importScreen(app) {
             : mp.element === 'cfst-column'
               ? { 'geometry.d': item.geometry.d, 'geometry.b': item.geometry.b, 'geometry.t': item.geometry.t }
               : { 'geometry.b': item.geometry.b, 'geometry.t': item.geometry.t },
-          members: c.members.map((m) => {
-            const dia = diagrams.get(m.frame);
-            const cb = dia ? computeCb(dia) : null;
-            return {
+          members: c.members.map((m) => ({
             frame: m.frame,
-            Cb: cb ? Number(cb.Cb.toFixed(3)) : null,
-            CbCase: cb ? cb.outputCase : null,
-            diagram: dia ? dia.points.map((pt) => [Math.round(pt.x), Math.round(pt.M)]) : null,
             M3: m.forces ? m.forces.M3.value : null,
             M3Case: m.forces ? m.forces.M3.outputCase : null,
             M3Station: m.forces ? m.forces.M3.station : null,
             V2: m.forces ? m.forces.V2.value : null,
             V2Station: m.forces ? m.forces.V2.station : null,
-          }; }),
+          })),
           worstP: worst.P,
         };
 
@@ -16554,7 +16425,7 @@ function publicApi(app) {
     ELEMENTS, searchElements, findElement, convertQuickToProject,
     FORM_SPECS, specFor, describeItem,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,
-    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers, momentDiagrams, computeCb, evaluateGroup, autoAssign, unifyOn, seedFromGoverning, newTrialSection, actionsForMember, groupVerdict, describeGroupVerdict, TRIAL_KINDS, trialKindsFor,
+    parseS2K, parseResultsTable, resultsFromS2K, driftFromModel, describeDrift, compareImport, governingMembers, evaluateGroup, autoAssign, unifyOn, seedFromGoverning, newTrialSection, actionsForMember, groupVerdict, describeGroupVerdict, TRIAL_KINDS, trialKindsFor,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement,
     MAP_SHAPE, MAP_MATERIAL, guessShape, guessMaterial, elementsFor, suggestElement, summariseModel, envelopeForces, envelopeReactions, buildCandidates, groupRestraints, toBaseFromSap,
     BUILD_NUMBER, buildLabel,
