@@ -246,19 +246,9 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.2.1';
+const PLATFORM_VERSION = '3.1.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '3.2.1',
-    date: '2026-09-15',
-    notes: 'No calculation changed. v3.2.0 was pinned, then a wording change was made to the grade properties panel and the platform was rebuilt, which updated the live copy but correctly refused to overwrite the folder already published under v3.2.0. That left two different files carrying the same version number, and a pinned link exists for exactly one reason: to reproduce a signed sheet literally. A version number must mean one build and nothing else, so this release supersedes it. v3.2.0 is left in place untouched.',
-  },
-  {
-    version: '3.2.0',
-    date: '2026-09-15',
-    notes: 'A named material grade is now binding. Choosing S355 or C40/50 or B500B fixes the properties that grade carries, and the fields holding them are shown but cannot be edited, because a sheet printing a grade name over a strength somebody had changed would be stating something untrue about a product standard and would look exactly as authoritative as a true one. Where a strength really does have to be entered by hand there is a Customize entry in every list: it releases the values, and it releases the name with them, so nothing is claimed that cannot be cited. The filled composite column had no grade lists at all, being the oldest screen in the platform, and it needs three because three materials act together in it — the tube, the infill and the reinforcement. That is how a yield strength of 3619.9926 kg/cm2, which is a unit conversion carried in from an analysis model rather than a grade anybody chose, reached a design sheet looking like an engineering decision. The reinforcement grade appears only when there are bars in the core. Choosing a grade now also shows everything it puts into the calculation rather than the one strength the field happens to display: the modulus, the shear modulus, Poisson\'s ratio, the thermal coefficient and the density all reach the result and none of them were visible before. Each line names the document it was transcribed from, and a steel thickness beyond the published bands is flagged for confirmation rather than extrapolated.',
-  },
   {
     version: '3.1.0',
     date: '2026-09-15',
@@ -549,8 +539,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "156";
-const RAW_TIME = "2026-09-14T21:54:38.589Z";
+const RAW_NUMBER = "146";
+const RAW_TIME = "2026-09-14T21:05:25.335Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -981,14 +971,6 @@ const UI = {
   'Concrete grade': 'رتبة الخرسانة',
   'Reinforcement grade': 'رتبة حديد التسليح',
   'Not from a standard grade': 'ليست رتبة قياسية',
-  'Tube steel grade': 'رتبة صلب الماسورة',
-  'Infill concrete grade': 'رتبة خرسانة الحشو',
-  'Choose a grade': 'اختر رتبة',
-  'Not a standard grade': 'ليست رتبة قياسية',
-  'Customize — enter the properties by hand': 'تخصيص — إدخال الخصائص يدوياً',
-  'Choose a grade. Its properties are then fixed by the standard it comes from.': 'اختر رتبة. عندها تصبح خصائصها ملزمة بالمواصفة التي جاءت منها.',
-  'Properties are entered by hand and cite no product standard. They print on the sheet as a stated assumption, so record why these values were used.': 'الخصائص مُدخلة يدوياً ولا تستند إلى مواصفة منتج. تُطبع في الشيت كافتراض مُعلن، لذا سجّل سبب استخدام هذه القيم.',
-  'Fixed by the grade above. Choose Customize to enter it by hand.': 'مُحددة بالرتبة أعلاه. اختر تخصيص لإدخالها يدوياً.',
   'Enter the strength directly, or choose a grade to fill it in.': 'أدخل المقاومة مباشرة، أو اختر رتبة لتُملأ تلقائياً.',
   'Worst M₃': 'أقصى M₃',
   'Worst V₂': 'أقصى V₂',
@@ -3213,14 +3195,7 @@ function createItem(patch = {}) {
       length: 4000,
       rebar: { n: 0, dia: 16, cover: 40 },
     },
-    // Grades, not just numbers. The three defaults are the grades the existing
-    // numeric defaults already described — S355 gives 355 MPa at a 12.5 mm
-    // wall, C40/50 gives f_ck 40, B500B gives f_yk 500 — so naming them changes
-    // no result, it only makes the source of each number sayable on the sheet.
-    materials: {
-      grade: 'S355', concreteGrade: 'C40/50', rebarGrade: 'B500B',
-      fy: 355, fck: 40, fsk: 500,
-    },
+    materials: { fy: 355, fck: 40, fsk: 500 },
     actions: { NEd: 4000e3, NGEd: 2400e3, MyEd: 120e6, MzEd: 0 },
 
     // Fire is required until somebody says otherwise, and saying otherwise
@@ -3289,31 +3264,6 @@ function itemLabel(item) {
 // calculation sheet, because the yield strength falls with product thickness.
 // Each steel grade therefore carries bands rather than one number, and the
 // strength is read for the plate actually being used.
-
-/**
- * The one entry in every grade list that is not a grade.
- *
- * A named grade is a promise about where its numbers came from: S355 means
- * 355 MPa to 40 mm because EN 10025 says so, not because somebody typed it.
- * So a named grade locks its properties, and the only way to enter a strength
- * by hand is to stop claiming a name for it. Choosing Customize is therefore
- * an engineering statement, not a convenience: the sheet prints the values as
- * a stated assumption with the engineer's own justification, and cites no
- * product standard, because there is none to cite.
- */
-const CUSTOM_GRADE = 'CUSTOM';
-
-function isCustomGrade(grade) {
-  return String(grade || '') === CUSTOM_GRADE;
-}
-
-/** Prepended to every grade list so the choice is always visible. */
-function withCustomOption(groups) {
-  return [
-    ...groups,
-    { group: 'Not a standard grade', options: [{ value: CUSTOM_GRADE, label: 'Customize — enter the properties by hand' }] },
-  ];
-}
 
 const MATERIAL_STANDARD = {
   EN10025: 'EN 10025',
@@ -3486,99 +3436,6 @@ function concreteByGrade(grade) {
 
 function rebarByGrade(grade) {
   return REBAR.find((b) => b.grade === grade) || null;
-}
-
-/* ---------------- what a grade actually holds ---------------- */
-
-/**
- * Every property a grade carries, with where each one came from.
- *
- * Written because the screens were showing one number — the yield strength —
- * and the engines were quietly using several more. A modulus, a density and a
- * coefficient of thermal expansion all reach the result, and none of them were
- * on screen for anybody to check. If a value is going into the calculation the
- * engineer is signing, it belongs in front of them.
- *
- * `source` is the document the value was transcribed from, not a design code
- * clause: these are product standards and an office reference, and calling
- * them clauses would be a false citation. Anything the reference does not pin
- * down is returned with `verify` set, and prints with the note that it must be
- * confirmed against the office controlled copy.
- *
- * @param {'steel'|'concrete'|'rebar'} kind
- * @param {string} grade
- * @param {object} [opts] thickness in mm for steel; family for the constants
- * @returns {{rows: Array, source: string|null, note: string|null}|null}
- */
-function gradeProperties(kind, grade, opts = {}) {
-  if (!grade || isCustomGrade(grade)) return null;
-  const family = opts.family && MATERIAL_CONSTANTS[opts.family] ? opts.family : 'eurocode';
-  const K = MATERIAL_CONSTANTS[family];
-  // These do not vary with grade, so they are not quoted from the grade table.
-  // Name the family they belong to the way an engineer would say it.
-  const CONST_SOURCE = {
-    eurocode: 'Eurocode constants',
-    egyptian: 'Egyptian code constants',
-    american: 'American code constants',
-  }[family];
-  const row = (symbol, description, value, dimension, source, extra = {}) =>
-    ({ symbol, description, value, dimension, source, ...extra });
-
-  if (kind === 'steel') {
-    const s = steelStrength(grade, opts.thickness);
-    if (!s) return null;
-    const bandText = s.band === Infinity
-      ? 'all thicknesses in the table'
-      : `plate up to ${s.band} mm`;
-    return {
-      source: s.standard,
-      note: s.beyondTable ? s.note : null,
-      rows: [
-        row('f_y', `Yield strength, ${bandText}`, s.fy, 'stress', s.standard, { verify: !!s.beyondTable }),
-        row('f_u', `Ultimate tensile strength, ${bandText}`, s.fu, 'stress', s.standard, { verify: !!s.beyondTable }),
-        row('t', 'Governing plate thickness read from the section', s.thickness, 'length', 'This section'),
-        row('E', 'Modulus of elasticity', K.E, 'stress', CONST_SOURCE),
-        row('G', 'Shear modulus', K.G, 'stress', CONST_SOURCE),
-        row('ν', "Poisson's ratio", K.nu, null, CONST_SOURCE),
-        row('α', 'Coefficient of thermal expansion, per °C', K.alpha, null, CONST_SOURCE),
-        row('ρ', 'Density, kg/m³', K.steelDensity, null, CONST_SOURCE),
-      ],
-    };
-  }
-
-  if (kind === 'concrete') {
-    const c = concreteByGrade(grade);
-    if (!c) return null;
-    const rows = [];
-    if (c.fck !== undefined) {
-      rows.push(row('f_ck', 'Characteristic cylinder strength at 28 days', c.fck, 'stress', c.standard));
-      rows.push(row('f_ck,cube', 'Characteristic cube strength', c.fckCube, 'stress', c.standard));
-      rows.push(row('f_cm', 'Mean cylinder strength', c.fcm, 'stress', c.standard));
-      rows.push(row('f_ctm', 'Mean tensile strength', c.fctm, 'stress', c.standard));
-      rows.push(row('E_cm', 'Secant modulus', c.Ecm, 'stress', c.standard));
-    } else if (c.fcu !== undefined) {
-      rows.push(row('f_cu', 'Characteristic cube strength at 28 days', c.fcu, 'stress', c.standard));
-      rows.push(row('E_c', 'Modulus of elasticity', c.Ec, 'stress', c.standard));
-      rows.push(row('f_ctr', 'Cracking stress', c.fctr, 'stress', c.standard));
-      rows.push(row('0.8 f_cu', 'Equivalent cylinder strength', c.fcEquivalent, 'stress', c.standard));
-    } else {
-      rows.push(row("f'_c", 'Specified compressive strength at 28 days', c.fc, 'stress', c.standard));
-      rows.push(row('E_c', 'Modulus of elasticity', c.Ec, 'stress', c.standard));
-    }
-    rows.push(row('ρ', 'Density, kg/m³', K.concreteDensity, null, CONST_SOURCE));
-    return { source: c.standard, note: null, rows };
-  }
-
-  const b = rebarByGrade(grade);
-  if (!b) return null;
-  const rows = [row('f_yk', 'Characteristic yield strength', b.fyk, 'stress', b.standard)];
-  if (b.fu) rows.push(row('f_u', 'Characteristic tensile strength', b.fu, 'stress', b.standard));
-  if (b.surface) rows.push(row('Surface', 'Bar surface', null, null, b.standard, { text: b.surface }));
-  if (b.ductility) rows.push(row('Class', 'Ductility class', null, null, b.standard, { text: b.ductility }));
-  rows.push(row('Weldable', 'Suitable for welding', null, null, b.standard,
-    { text: b.weldable ? 'Yes' : 'Not without a chemistry review' }));
-  rows.push(row('ρ', 'Density, kg/m³', K.steelDensity, null, CONST_SOURCE));
-  return { source: b.standard, note: b.note || null, rows };
 }
 
 
@@ -12141,26 +11998,6 @@ body.tg-translating .tg-board *{cursor:help}
   padding:7px 9px;background:#fff;width:100%;min-width:0;
 }
 .tg-field textarea{min-height:88px;resize:vertical;line-height:1.55}
-
-/* A value a named grade owns. Legible, plainly not editable, and still
-   selectable so it can be copied into a check by hand. */
-.tg-field input[data-locked="true"]{
-  background:var(--tg-paper);color:var(--tg-ink-60);
-  border-style:dashed;cursor:default;
-}
-/* Every property the grade puts into the calculation, not only the one the
-   field shows. */
-.tg-gradeprops{margin-top:6px;border:1px solid var(--tg-rule);border-radius:var(--tg-radius);background:var(--tg-paper);overflow:hidden}
-.tg-gradeprops__table{width:100%;border-collapse:collapse;font-size:11.5px}
-.tg-gradeprops__table th,.tg-gradeprops__table td{padding:4px 8px;text-align:left;border-bottom:1px solid var(--tg-rule);vertical-align:top}
-.tg-gradeprops__table tr:last-child th,.tg-gradeprops__table tr:last-child td{border-bottom:0}
-.tg-gradeprops__table th{font-family:var(--tg-font-ident);font-weight:600;color:var(--tg-ink);white-space:nowrap;width:1%}
-.tg-gradeprops__table td{color:var(--tg-ink-60)}
-.tg-gradeprops__val{font-family:var(--tg-font-ident);color:var(--tg-ink);text-align:right;white-space:nowrap}
-.tg-gradeprops__src{color:var(--tg-ink-40);white-space:nowrap}
-.tg-gradeprops__note{margin:0;padding:6px 8px;font-size:11.5px;color:var(--tg-red-deep);border-top:1px solid var(--tg-rule)}
-[dir="rtl"] .tg-gradeprops__table th,[dir="rtl"] .tg-gradeprops__table td{text-align:right}
-[dir="rtl"] .tg-gradeprops__val{text-align:left}
 .tg-field input:focus,.tg-field select:focus,.tg-field textarea:focus{
   border-color:var(--tg-ink);outline:2px solid var(--tg-red);outline-offset:0;
 }
@@ -12551,7 +12388,7 @@ function select({ id, value = '', options = [], onChange, placeholder }) {
  */
 const inflight = new Map();
 
-function numberInput({ id, value, onCommit, step = 'any', min, max, placeholder, locked = false, lockTitle }) {
+function numberInput({ id, value, onCommit, step = 'any', min, max, placeholder }) {
   const pending = inflight.get(id);
   const shown = pending !== undefined ? pending : formatForEdit(value);
 
@@ -12559,19 +12396,8 @@ function numberInput({ id, value, onCommit, step = 'any', min, max, placeholder,
     id, type: 'text', inputmode: 'decimal', placeholder,
     value: shown,
     autocomplete: 'off', spellcheck: 'false',
-    dataset: { numeric: 'true', locked: String(!!locked) },
+    dataset: { numeric: 'true' },
   });
-
-  // readOnly rather than disabled: a disabled field is skipped by the keyboard
-  // and is not read out, so an engineer tabbing through the form would never
-  // learn the value at all. Read-only still selects, still copies, still
-  // reaches the screen reader — it simply cannot be changed.
-  if (locked) {
-    el.readOnly = true;
-    el.setAttribute('aria-readonly', 'true');
-    if (lockTitle) el.title = lockTitle;
-    return el;
-  }
 
   el.addEventListener('input', () => {
     // Hold the raw text. Do not parse, do not format, do not recalculate.
@@ -12826,9 +12652,9 @@ const FORM_SPECS = {
         key: 'beam.materials', title: 'Materials', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Main steel yield f_y', dim: 'stress', derivedFrom: 'rebar' },
-          { path: 'materials.fyStirrup', label: 'Stirrup yield f_yst', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Main steel yield f_y', dim: 'stress' },
+          { path: 'materials.fyStirrup', label: 'Stirrup yield f_yst', dim: 'stress' },
         ],
       },
       {
@@ -12870,8 +12696,8 @@ const FORM_SPECS = {
         key: 'col.materials', title: 'Materials', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Reinforcement yield f_y', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
         ],
       },
       {
@@ -12906,8 +12732,8 @@ const FORM_SPECS = {
         key: 'fdn.materials', title: 'Materials and soil', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Reinforcement yield f_y', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
           { path: 'soil.qall', label: 'Allowable bearing pressure', dim: 'stress' },
         ],
       },
@@ -12938,8 +12764,8 @@ const FORM_SPECS = {
         key: 'slab.materials', title: 'Materials', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Reinforcement yield f_y', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
         ],
       },
       {
@@ -12975,8 +12801,8 @@ const FORM_SPECS = {
         key: 'comb.materials', title: 'Materials and soil', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Reinforcement yield f_y', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
           { path: 'soil.qall', label: 'Allowable bearing pressure', dim: 'stress' },
         ],
       },
@@ -13008,7 +12834,7 @@ const FORM_SPECS = {
       {
         key: 'pg.materials', title: 'Material', fields: [
           { path: 'materials.grade', label: 'Steel grade', grade: 'steel' },
-          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress', derivedFrom: 'steel' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
         ],
       },
       {
@@ -13048,8 +12874,8 @@ const FORM_SPECS = {
         key: 'wall.materials', title: 'Materials', fields: [
           { path: 'materials.concreteGrade', label: 'Concrete grade', grade: 'concrete' },
           { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar' },
-          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fy', label: 'Reinforcement yield f_y', dim: 'stress', derivedFrom: 'rebar' },
+          { path: 'materials.fcu', label: 'Concrete cube strength f_cu', dim: 'stress' },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
         ],
       },
     ],
@@ -13077,7 +12903,7 @@ const FORM_SPECS = {
       {
         key: 'sb.materials', title: 'Material', fields: [
           { path: 'materials.grade', label: 'Steel grade', grade: 'steel' },
-          { path: 'materials.fy', label: 'Steel yield F_y', dim: 'stress', derivedFrom: 'steel' },
+          { path: 'materials.fy', label: 'Steel yield F_y', dim: 'stress' },
         ],
       },
       {
@@ -13109,7 +12935,7 @@ const FORM_SPECS = {
       {
         key: 'dc.materials', title: 'Material', fields: [
           { path: 'materials.grade', label: 'Steel grade', grade: 'steel' },
-          { path: 'materials.fy', label: 'Steel yield F_y', dim: 'stress', derivedFrom: 'steel' },
+          { path: 'materials.fy', label: 'Steel yield F_y', dim: 'stress' },
         ],
       },
       {
@@ -13154,19 +12980,10 @@ const FORM_SPECS = {
         ],
       },
       {
-        // Three materials act together in this element, so it takes three
-        // grades. It had none at all until v3.2.0, which is how a yield
-        // strength of 3619.9926 kg/cm2 — a unit conversion, not a grade —
-        // reached a design sheet and looked like an engineering decision.
         key: 'cfst.materials', title: 'Materials', fields: [
-          { path: 'materials.grade', label: 'Tube steel grade', grade: 'steel' },
-          { path: 'materials.concreteGrade', label: 'Infill concrete grade', grade: 'concrete' },
-          // A grade for reinforcement that is not there would print a material
-          // on the sheet for steel nobody is buying.
-          { path: 'materials.rebarGrade', label: 'Reinforcement grade', grade: 'rebar', when: hasBars },
-          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress', derivedFrom: 'steel' },
-          { path: 'materials.fck', label: 'Concrete cylinder strength f_ck', dim: 'stress', derivedFrom: 'concrete' },
-          { path: 'materials.fsk', label: 'Reinforcement yield f_sk', dim: 'stress', derivedFrom: 'rebar', when: hasBars },
+          { path: 'materials.fy', label: 'Steel yield f_y', dim: 'stress' },
+          { path: 'materials.fck', label: 'Concrete cylinder strength f_ck', dim: 'stress' },
+          { path: 'materials.fsk', label: 'Reinforcement yield f_sk', dim: 'stress' },
         ],
       },
       {
@@ -13198,24 +13015,7 @@ function describeItem(item) {
  * the strength is read for the thickness actually in the section, and the
  * number that lands in the field is the one that belongs to that plate.
  */
-/**
- * Are there bars in the core?
- *
- * Written defensively because a `when` predicate is handed whatever the caller
- * has: the group screen passes a trial section that carries a shape and a wall
- * thickness and nothing else. Reaching straight into geometry.rebar.n threw
- * there, and a form that throws shows no fields at all.
- */
-function hasBars(it) {
-  const r = it && it.geometry ? it.geometry.rebar : null;
-  return !!r && Number(r.n) > 0;
-}
-
 function gradeFieldOptions(kind, item) {
-  return withCustomOption(standardGradeOptions(kind, item));
-}
-
-function standardGradeOptions(kind, item) {
   if (kind === 'steel') {
     const code = String(item.code || '');
     const standards = /ECP/.test(code) ? ['ECP 205', 'EN 10025']
@@ -13251,35 +13051,10 @@ function governingThickness(g) {
   return candidates.length ? Math.max(...candidates) : 0;
 }
 
-/** Where each kind of grade is recorded, the same on every element. */
-const GRADE_PATH = {
-  steel: 'materials.grade',
-  concrete: 'materials.concreteGrade',
-  rebar: 'materials.rebarGrade',
-};
-
-/**
- * Is the strength for this kind of material fixed by a named grade?
- *
- * A named grade owns its numbers, so the fields it fills are read-only: a
- * sheet that printed "S355" over a yield strength somebody had edited to
- * something else would be stating a falsehood about a product standard, and it
- * would look exactly as authoritative as a true one. Customize is the way out,
- * and it removes the name along with the lock.
- */
-function gradeLocks(item, kind) {
-  const g = item && item.materials ? item.materials[GRADE_PATH[kind].split('.')[1]] : null;
-  return !!g && !isCustomGrade(g);
-}
-
 function applyGrade(item, kind, path, value) {
   const next = { ...item, materials: { ...item.materials }, geometry: { ...item.geometry } };
   setPath(next, path, value);
-  // Customize keeps whatever numbers are already in the fields and hands them
-  // back to the engineer. Nothing is overwritten and nothing is cleared: the
-  // values that were there are usually the right starting point, and wiping
-  // them would make the escape hatch cost more than it saves.
-  if (!value || isCustomGrade(value)) return next;
+  if (!value) return next;
 
   if (kind === 'steel') {
     const t = governingThickness(next.geometry);
@@ -13314,10 +13089,7 @@ function applyGrade(item, kind, path, value) {
 }
 
 function gradeHint(kind, value, item, units) {
-  if (!value) return 'Choose a grade. Its properties are then fixed by the standard it comes from.';
-  if (isCustomGrade(value)) {
-    return 'Properties are entered by hand and cite no product standard. They print on the sheet as a stated assumption, so record why these values were used.';
-  }
+  if (!value) return 'Enter the strength directly, or choose a grade to fill it in.';
 
   if (kind === 'steel') {
     const t = governingThickness(item.geometry);
@@ -13348,41 +13120,6 @@ function gradeHint(kind, value, item, units) {
   if (b.weldable) bits.push('weldable');
   if (b.ductility) bits.push(`ductility class ${b.ductility}`);
   return bits.join(' · ');
-}
-
-/**
- * The properties panel shown under a grade field.
- *
- * Every value the grade puts into the calculation, not only the one the field
- * happens to display. An engineer asked for this after finding that choosing a
- * grade set a modulus and a density he never saw.
- */
-function gradePropertyRows(kind, value, item, units) {
-  const code = String((item && item.code) || '');
-  const family = /ACI|AISC/.test(code) ? 'american' : /ECP/.test(code) ? 'egyptian' : 'eurocode';
-  const t = kind === 'steel' ? governingThickness(item && item.geometry) : 0;
-  const p = gradeProperties(kind, value, { thickness: t, family });
-  if (!p) return null;
-  return {
-    source: p.source,
-    note: p.note,
-    rows: p.rows.map((r) => ({
-      ...r,
-      display: r.text !== undefined ? r.text
-        : r.dimension === 'stress' ? formatStrength(r.value, units)
-          : r.dimension ? formatWithUnit(r.value, r.dimension, units)
-            : formatPlain(r.value),
-    })),
-  };
-}
-
-/** Small numbers such as 12e-6 must not print as 0.000. */
-function formatPlain(v) {
-  if (v === null || v === undefined) return '—';
-  const n = Number(v);
-  if (!Number.isFinite(n)) return String(v);
-  if (n !== 0 && Math.abs(n) < 0.001) return n.toExponential(1);
-  return String(Number(n.toFixed(4)));
 }
 
 
@@ -14781,19 +14518,9 @@ function designerScreen(app, itemId) {
           ) }),
         fold({ key: 'cfst.materials', title: 'Materials', body:
           h('div', { class: 'tg-grid' },
-            // Three materials act together here, so it takes three grades.
-            // This screen had none until v3.2.0, which is how a yield strength
-            // of 3619.9926 kg/cm2 — a unit conversion carried in from an
-            // analysis model, not a grade anybody chose — reached a design
-            // sheet looking like an engineering decision.
-            cfstGrade('steel', 'grade', 'Tube steel grade', it, u, mutate),
-            cfstGrade('concrete', 'concreteGrade', 'Infill concrete grade', it, u, mutate),
-            // A grade for reinforcement that is not there would put a material
-            // on the sheet for steel nobody is buying.
-            hasBars(it) ? cfstGrade('rebar', 'rebarGrade', 'Reinforcement grade', it, u, mutate) : null,
-            matField(it, 'fy', 'Steel yield strength f_y', u, mutate, 'steel'),
-            matField(it, 'fck', 'Concrete cylinder strength f_ck', u, mutate, 'concrete'),
-            hasBars(it) ? matField(it, 'fsk', 'Reinforcement yield f_sk', u, mutate, 'rebar') : null,
+            matField(it, 'fy', 'Steel yield strength f_y', u, mutate),
+            matField(it, 'fck', 'Concrete cylinder strength f_ck', u, mutate),
+            matField(it, 'fsk', 'Reinforcement yield f_sk', u, mutate),
             field({
               label: 'Bars', id: 'in-nbar', ident: true,
               control: numberInput({
@@ -15060,33 +14787,13 @@ function designerScreen(app, itemId) {
   return host;
 }
 
-function matField(it, key, label, u, mutate, ownedBy) {
-  const locked = !!ownedBy && gradeLocks(it, ownedBy);
+function matField(it, key, label, u, mutate) {
   return field({
     label: `${label} (${symbolFor(u, 'stress')})`, id: `mat-${key}`, ident: true,
-    hint: locked ? `Fixed by the grade above. Choose Customize to enter it by hand.` : null,
     control: numberInput({
       id: `mat-${key}`, value: fromBase(it.materials[key], 'stress', u), min: 0,
-      locked,
       onCommit: (v) => mutate((x) => ({ ...x, materials: { ...x.materials, [key]: toBase(v, 'stress', u) } })),
     }),
-  });
-}
-
-/** A grade dropdown on the hand-written composite column screen. */
-function cfstGrade(kind, key, label, it, u, mutate) {
-  const id = `mat-${key}`;
-  return field({
-    label, id, span: true,
-    hint: gradeHint(kind, it.materials[key], it, u),
-    control: h('div', null,
-      select({
-        id, value: it.materials[key] || '',
-        placeholder: 'Choose a grade',
-        options: gradeFieldOptions(kind, it),
-        onChange: (v) => mutate((x) => applyGrade(x, kind, `materials.${key}`, v)),
-      }),
-      gradePropertyTable(kind, it.materials[key], it, u)),
   });
 }
 
@@ -15194,16 +14901,14 @@ function renderField(it, f, u, mutate) {
 
   if (f.grade) {
     return field({
-      label: f.label, id, span: true,
+      label: f.label, id,
       hint: gradeHint(f.grade, raw, it, u),
-      control: h('div', null,
-        select({
-          id, value: raw || '',
-          placeholder: 'Choose a grade',
-          options: gradeFieldOptions(f.grade, it),
-          onChange: (v) => mutate((x) => applyGrade(x, f.grade, f.path, v)),
-        }),
-        gradePropertyTable(f.grade, raw, it, u)),
+      control: select({
+        id, value: raw || '',
+        placeholder: 'Not from a standard grade',
+        options: gradeFieldOptions(f.grade, it),
+        onChange: (v) => mutate((x) => applyGrade(x, f.grade, f.path, v)),
+      }),
     });
   }
 
@@ -15234,10 +14939,6 @@ function renderField(it, f, u, mutate) {
       id,
       value: f.dim ? fromBase(Number(raw) || 0, f.dim, u) : (Number(raw) || 0),
       min: f.min,
-      // A value that a named grade owns is shown, not edited. Choosing
-      // Customize on that grade is what hands it back.
-      locked: !!f.derivedFrom && gradeLocks(it, f.derivedFrom),
-      lockTitle: f.derivedFrom ? `Set by the ${f.derivedFrom} grade. Choose Customize on that grade to enter it by hand.` : null,
       onCommit: (v) => mutate((x) => {
         const next = { ...x };
         setPath(next, f.path, f.dim ? toBase(v, f.dim, u) : (f.integer ? Math.round(v) : v));
@@ -15249,30 +14950,6 @@ function renderField(it, f, u, mutate) {
       }),
     }),
   });
-}
-
-
-/**
- * Everything the chosen grade puts into the calculation.
- *
- * Shown in full rather than as the one strength the field holds, because the
- * rest — the modulus, the density, the thermal coefficient — reach the result
- * just as surely and were previously invisible. Each row names where it came
- * from, and a row the reference does not pin down says so instead of printing
- * a number that looks as settled as the others.
- */
-function gradePropertyTable(kind, value, it, u) {
-  const p = gradePropertyRows(kind, value, it, u);
-  if (!p) return null;
-  return h('div', { class: 'tg-gradeprops' },
-    h('table', { class: 'tg-gradeprops__table' },
-      h('tbody', null, p.rows.map((r) => h('tr', null,
-        h('th', null, r.symbol),
-        h('td', null, r.description),
-        h('td', { class: 'tg-gradeprops__val' }, r.display),
-        h('td', { class: 'tg-gradeprops__src' }, r.verify ? `${r.source} — confirm` : r.source),
-      )))),
-    p.note ? h('p', { class: 'tg-gradeprops__note' }, p.note) : null);
 }
 
 
@@ -17526,8 +17203,7 @@ function publicApi(app) {
     newPerson, ROLES, ROLE, can, canCheckItem, peopleOptions,
     newComment, openComments, statusBlocked, replyTo, closeComment, reopenComment, sheetReviewBlock, REVIEW_METHOD,
     ELEMENTS, searchElements, findElement, convertQuickToProject,
-    FORM_SPECS, specFor, describeItem, gradeFieldOptions, hasBars,
-    gradeProperties, isCustomGrade, CUSTOM_GRADE, applyGrade, gradeLocks, gradePropertyRows,
+    FORM_SPECS, specFor, describeItem,
     STRUCTURAL_STEEL, CONCRETE_EC2, CONCRETE_ECP, CONCRETE_ACI, REBAR, steelStrength, concreteByGrade, rebarByGrade,
     steelGradeOptions, concreteOptions, rebarOptions, MATERIAL_CONSTANTS,
     EUROPEAN_SECTIONS, sectionByName, sectionsInFamily, sectionOptions, matchByDimensions,

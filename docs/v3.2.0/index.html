@@ -246,14 +246,9 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.2.1';
+const PLATFORM_VERSION = '3.2.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '3.2.1',
-    date: '2026-09-15',
-    notes: 'No calculation changed. v3.2.0 was pinned, then a wording change was made to the grade properties panel and the platform was rebuilt, which updated the live copy but correctly refused to overwrite the folder already published under v3.2.0. That left two different files carrying the same version number, and a pinned link exists for exactly one reason: to reproduce a signed sheet literally. A version number must mean one build and nothing else, so this release supersedes it. v3.2.0 is left in place untouched.',
-  },
   {
     version: '3.2.0',
     date: '2026-09-15',
@@ -549,8 +544,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "156";
-const RAW_TIME = "2026-09-14T21:54:38.589Z";
+const RAW_NUMBER = "153";
+const RAW_TIME = "2026-09-14T21:18:03.006Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -3514,13 +3509,6 @@ function gradeProperties(kind, grade, opts = {}) {
   if (!grade || isCustomGrade(grade)) return null;
   const family = opts.family && MATERIAL_CONSTANTS[opts.family] ? opts.family : 'eurocode';
   const K = MATERIAL_CONSTANTS[family];
-  // These do not vary with grade, so they are not quoted from the grade table.
-  // Name the family they belong to the way an engineer would say it.
-  const CONST_SOURCE = {
-    eurocode: 'Eurocode constants',
-    egyptian: 'Egyptian code constants',
-    american: 'American code constants',
-  }[family];
   const row = (symbol, description, value, dimension, source, extra = {}) =>
     ({ symbol, description, value, dimension, source, ...extra });
 
@@ -3537,11 +3525,11 @@ function gradeProperties(kind, grade, opts = {}) {
         row('f_y', `Yield strength, ${bandText}`, s.fy, 'stress', s.standard, { verify: !!s.beyondTable }),
         row('f_u', `Ultimate tensile strength, ${bandText}`, s.fu, 'stress', s.standard, { verify: !!s.beyondTable }),
         row('t', 'Governing plate thickness read from the section', s.thickness, 'length', 'This section'),
-        row('E', 'Modulus of elasticity', K.E, 'stress', CONST_SOURCE),
-        row('G', 'Shear modulus', K.G, 'stress', CONST_SOURCE),
-        row('ν', "Poisson's ratio", K.nu, null, CONST_SOURCE),
-        row('α', 'Coefficient of thermal expansion, per °C', K.alpha, null, CONST_SOURCE),
-        row('ρ', 'Density, kg/m³', K.steelDensity, null, CONST_SOURCE),
+        row('E', 'Modulus of elasticity', K.E, 'stress', `${family} constants`),
+        row('G', 'Shear modulus', K.G, 'stress', `${family} constants`),
+        row('ν', "Poisson's ratio", K.nu, null, `${family} constants`),
+        row('α', 'Coefficient of thermal expansion, per °C', K.alpha, null, `${family} constants`),
+        row('ρ', 'Density, kg/m³', K.steelDensity, null, `${family} constants`),
       ],
     };
   }
@@ -3565,7 +3553,7 @@ function gradeProperties(kind, grade, opts = {}) {
       rows.push(row("f'_c", 'Specified compressive strength at 28 days', c.fc, 'stress', c.standard));
       rows.push(row('E_c', 'Modulus of elasticity', c.Ec, 'stress', c.standard));
     }
-    rows.push(row('ρ', 'Density, kg/m³', K.concreteDensity, null, CONST_SOURCE));
+    rows.push(row('ρ', 'Density, kg/m³', K.concreteDensity, null, `${family} constants`));
     return { source: c.standard, note: null, rows };
   }
 
@@ -3577,7 +3565,7 @@ function gradeProperties(kind, grade, opts = {}) {
   if (b.ductility) rows.push(row('Class', 'Ductility class', null, null, b.standard, { text: b.ductility }));
   rows.push(row('Weldable', 'Suitable for welding', null, null, b.standard,
     { text: b.weldable ? 'Yes' : 'Not without a chemistry review' }));
-  rows.push(row('ρ', 'Density, kg/m³', K.steelDensity, null, CONST_SOURCE));
+  rows.push(row('ρ', 'Density, kg/m³', K.steelDensity, null, `${family} constants`));
   return { source: b.standard, note: b.note || null, rows };
 }
 
