@@ -213,27 +213,6 @@ function formatNumber(value, decimals = 3) {
 }
 
 
-/**
- * A strength shown in the project's units, with the SI value beside it when
- * they differ.
- *
- * Steel and concrete grades are named in MPa everywhere — S355, C30/37, f_cu 30
- * — whatever units a project works in. On an MKS project the same strength
- * reads 3619.99 kg/cm², which is correct and tells the engineer nothing about
- * which grade is in front of them. Both are shown so the number stays usable
- * and the grade stays recognisable.
- */
-function formatStrength(valueMPa, units) {
-  const v = Number(valueMPa);
-  if (!Number.isFinite(v)) return '—';
-  const si = `${Number(v.toFixed(v < 10 ? 2 : 0))} MPa`;
-  const sym = symbolFor(units, 'stress');
-  if (sym === 'MPa') return si;
-  const local = fromBase(v, 'stress', units);
-  return `${si} (${Number(local.toFixed(local < 10 ? 2 : 0))} ${sym})`;
-}
-
-
 /* ===== src/core/version.js ===== */
 // core/version.js — platform version, and comparing a result across versions.
 //
@@ -246,24 +225,9 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.0.0';
+const PLATFORM_VERSION = '2.15.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '3.0.0',
-    date: '2026-09-12',
-    notes: 'The office verification of ECP 203-2020 came back and five values this platform held were wrong. Minimum beam reinforcement takes 1.1/f_y as its second term, not a flat 0.15 per cent of the gross section. The upper slenderness for the simplified column method is 23 unbraced, not the 30 that applies braced. A spiral column is governed by the lower of the gross-section and the confinement expressions, and its minimum steel is the greater of one per cent of the gross area and 1.2 per cent of the core, not the tied 0.8 per cent. Punching is the least of three expressions, not the first alone, and the absolute cap is 1.7 rather than 1.60. Solid slabs take different span-to-thickness limits one way and two ways, and merging them was unconservative. The footing self-weight allowance is office practice and is now declared as an assumption rather than cited as a clause. Values the review would not release — the neutral axis depth table, the biaxial beta table and the two-way slab coefficients — remain flagged and refused. This is a major version because designs produced before it will not all reproduce.',
-  },
-  {
-    version: '2.16.0',
-    date: '2026-09-12',
-    notes: 'Strengths now carry their value in MPa alongside the project units. Grades are named in MPa everywhere — S355, C30/37, f_cu 30 — whatever units a project works in, so on an MKS project a yield strength reading 3619.99 kg/cm2 was correct and told the engineer nothing about which grade was in front of them. Both are shown where they differ, and only one where they do not.',
-  },
-  {
-    version: '2.15.1',
-    date: '2026-09-12',
-    notes: 'Fixed: the form written yesterday for the filled composite column addressed field names the engine does not use — length instead of the length it validates, bars instead of the reinforcement group — so every field wrote to somewhere nothing read and editing a section changed nothing. The imported column also had no length at all, because the model carries it in the joint coordinates and the import was not reading them; it is now taken from the member geometry. Fields that do not apply are hidden in the group screen as they are elsewhere, so a circular tube is no longer asked for a width and a depth as well as a diameter. Each trial section now names the check that governs it, because enlarging a section that keeps failing tells nobody anything when the governing check is one the section barely affects.',
-  },
   {
     version: '2.15.0',
     date: '2026-09-12',
@@ -534,8 +498,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "143";
-const RAW_TIME = "2026-09-14T12:09:58.735Z";
+const RAW_NUMBER = "127";
+const RAW_TIME = "2026-09-14T11:00:06.729Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -956,9 +920,6 @@ const UI = {
   'Channels': 'القنوات',
   'Steel tube': 'الماسورة المعدنية',
   'Steel grade': 'رتبة الحديد',
-  'The strength falls with thickness, so it is read for the plate in this section rather than from the grade name alone.':
-    'تقلّ المقاومة بزيادة السُمك، فتُقرأ للّوح الموجود في هذا القطاع لا من اسم الرتبة وحده.',
-  'Concrete cylinder strength f_ck': 'مقاومة الأسطوانة f_ck',
   'Concrete grade': 'رتبة الخرسانة',
   'Reinforcement grade': 'رتبة حديد التسليح',
   'Not from a standard grade': 'ليست رتبة قياسية',
@@ -6623,20 +6584,15 @@ const ECP203_DATA = {
   qumaxCap: { value: 4.0, clause: '4.2.2', desc: 'Absolute cap on q_umax in N/mm2', verify: true },
 
   // Minimum reinforcement
-  asMinFactor: { value: 0.225, clause: '4-2-1', desc: 'Coefficient in the first term of As,min', verify: false },
-  // The office review found the second term to be 1.1/f_y, not a flat 0.15% of
-  // the gross section. The two differ most on shallow sections and on high
-  // strength steel, which is exactly where a minimum matters.
-  asMinSecond: { value: 1.1, clause: '4-2-1', desc: 'Coefficient in the second term of As,min, taken as (1.1/f_y) b d', verify: false },
+  asMinFactor: { value: 0.225, clause: '4.2', desc: 'Coefficient in As,min = (0.225 sqrt(f_cu)/f_y) b d', verify: true },
+  asMinFloorPct: { value: 0.15, clause: '4.2', desc: 'Absolute floor on As,min as a percentage of b d', verify: true },
   asMaxPct: { value: 4.0, clause: '4.2', desc: 'Maximum tension reinforcement as a percentage of b d', verify: true },
 
   // Deflection control by span to depth
   spanDepth: {
     clause: '4.3',
-    desc: 'Span to effective depth limits for beams, for deflection without calculation',
+    desc: 'Span to effective depth limits for deflection without calculation',
     simple: 16, continuousOne: 18, continuousTwo: 21, cantilever: 8,
-    // The office review covered the slab values, not the beam values. These
-    // therefore remain unconfirmed and are still flagged.
     verify: true,
   },
 };
@@ -6705,7 +6661,7 @@ function ecp_flexure(ctx) {
   const MuMax = k * aMax * (d - aMax / 2);
 
   const asMinA = (ECP203_DATA.asMinFactor.value * Math.sqrt(mat.fcu) / mat.fy) * b * d;
-  const asMinB = (ECP203_DATA.asMinSecond.value / mat.fy) * b * d;
+  const asMinB = (ECP203_DATA.asMinFloorPct.value / 100) * b * d;
   const asMin = Math.max(asMinA, asMinB);
   const asMax = (ECP203_DATA.asMaxPct.value / 100) * b * d;
   const AsProvided = Math.max(As, asMin);
@@ -6746,10 +6702,9 @@ function ecp_flexure(ctx) {
     }),
     step({
       code: ECP, clause: '4.2', symbol: 'A_s,min', description: 'Minimum tension reinforcement',
-      expression: 'A_s,min = max[ (0.225 √f_cu / f_y) b d , (1.1 / f_y) b d ]',
+      expression: 'A_s,min = max[ (0.225 √f_cu / f_y) b d , 0.15% b d ]',
       substitution: `max(${asMinA.toFixed(0)}, ${asMinB.toFixed(0)})`,
-      value: asMin, dimension: 'area',
-      note: 'The second term is 1.1/f_y, not a flat percentage of the gross section. Confirmed in the office review of ECP 203-2020.',
+      value: asMin, dimension: 'area', verify: true,
     }),
     derived({
       symbol: 'A_s,req', description: 'Reinforcement adopted, being the larger of the calculated and the minimum',
@@ -6792,10 +6747,6 @@ function ecp_flexure(ctx) {
       failureMode: 'Congested section; the code limit on tension steel is exceeded',
       verify: true,
       steps: [],
-      // The office review was explicit that four per cent is not the only
-      // flexural limit, and that the neutral axis depth limit above usually
-      // bites first. Passing this check alone does not make a section adequate.
-      note: 'Four per cent is not the only flexural limit. The neutral axis depth limit above governs ductility and often governs first; both must be satisfied.',
     }),
   ];
 
@@ -6973,30 +6924,19 @@ const ECPC = 'ECP 203-2020';
 
 const ECP203_COL_DATA = {
   // Short column capacity, braced, ultimate limit state
-  tiedConcrete: { value: 0.35, clause: '6.4', desc: 'Concrete coefficient for a tied column', verify: false },
-  tiedSteel: { value: 0.67, clause: '6.4', desc: 'Steel coefficient for a tied column', verify: false },
-  spiralConcrete: { value: 0.40, clause: '6.4', desc: 'Concrete coefficient for a spirally reinforced column, gross section expression', verify: false },
-  spiralSteel: { value: 0.76, clause: '6.4', desc: 'Steel coefficient for a spirally reinforced column, gross section expression', verify: false },
-  // The office review was explicit that the gross-section expression is not a
-  // complete rule on its own: the confinement expression must also be evaluated
-  // and the lower of the two governs.
-  spiralConfinedConcrete: { value: 0.35, clause: '6.4', desc: 'Concrete coefficient in the confinement expression, on the core area A_k', verify: false },
-  spiralConfinedSteel: { value: 0.67, clause: '6.4', desc: 'Steel coefficient in the confinement expression', verify: false },
-  spiralHelix: { value: 1.38, clause: '6.4', desc: 'Coefficient on the volumetric contribution of the spiral, 1.38 f_yp V_sp', verify: false },
+  tiedConcrete: { value: 0.35, clause: '6.4', desc: 'Concrete coefficient for a tied column, P_u = 0.35 f_cu A_c + 0.67 f_y A_sc', verify: true },
+  tiedSteel: { value: 0.67, clause: '6.4', desc: 'Steel coefficient for a tied column', verify: true },
+  spiralConcrete: { value: 0.40, clause: '6.4', desc: 'Concrete coefficient for a spirally reinforced column', verify: true },
+  spiralSteel: { value: 0.76, clause: '6.4', desc: 'Steel coefficient for a spirally reinforced column', verify: true },
 
   // Reinforcement limits
-  rhoMin: { value: 0.008, clause: '6.4', desc: 'Minimum longitudinal reinforcement ratio for a tied column', verify: false },
-  rhoMinSpiralGross: { value: 0.010, clause: '6.4', desc: 'Minimum longitudinal reinforcement for a spiral column, on the gross area', verify: false },
-  rhoMinSpiralCore: { value: 0.012, clause: '6.4', desc: 'Minimum longitudinal reinforcement for a spiral column, on the core area', verify: false },
+  rhoMin: { value: 0.008, clause: '6.4', desc: 'Minimum longitudinal reinforcement ratio', verify: true },
   rhoMax: { value: 0.040, clause: '6.4', desc: 'Maximum longitudinal reinforcement ratio', verify: true },
 
   // Slenderness
-  slendernessBraced: { value: 15, clause: '6.4', desc: 'Slenderness ratio below which a braced column is short', verify: false },
-  slendernessUnbraced: { value: 10, clause: '6.4', desc: 'Slenderness ratio below which an unbraced column is short', verify: false },
-  // Corrected by the office review: the upper limit for the simplified method
-  // is 23 for an unbraced column, not the 30 that applies to a braced one.
-  slendernessMax: { value: 30, clause: '6.4', desc: 'Upper slenderness for the simplified method, braced column', verify: false },
-  slendernessMaxUnbraced: { value: 23, clause: '6.4', desc: 'Upper slenderness for the simplified method, unbraced column', verify: false },
+  slendernessBraced: { value: 15, clause: '6.4', desc: 'Slenderness ratio below which a braced column is short', verify: true },
+  slendernessUnbraced: { value: 10, clause: '6.4', desc: 'Slenderness ratio below which an unbraced column is short', verify: true },
+  slendernessMax: { value: 30, clause: '6.4', desc: 'Slenderness ratio beyond which the simplified method may not be used', verify: true },
 
   // Biaxial bending: beta against the axial load level R_b
   betaTable: {
@@ -7046,7 +6986,6 @@ function ecpc_slenderness(ctx) {
       expression: 'λ = H_e / b_min', value: lambda,
     }),
     colDataStep(braced ? 'slendernessBraced' : 'slendernessUnbraced', 'λ_short'),
-    colDataStep(braced ? 'slendernessMax' : 'slendernessMaxUnbraced', 'λ_max'),
     step({
       code: ECPC, clause: '6.4', symbol: 'δ', description: 'Additional eccentricity for a slender column',
       expression: 'δ = λ² b / 2000, taken as zero for a short column',
@@ -7061,11 +7000,9 @@ function ecpc_slenderness(ctx) {
       id: 'slenderness',
       title: isShort ? 'Column is short' : 'Column is slender',
       code: ECPC, clause: '6.4', clauseTitle: 'Slenderness of columns',
-      demand: lambda,
-      capacity: braced ? colD('slendernessMax') : colD('slendernessMaxUnbraced'),
-      dimension: null,
+      demand: lambda, capacity: colD('slendernessMax'), dimension: null,
       failureMode: 'Buckling of a slender column. Beyond the tabulated limit the simplified method may not be used at all.',
-      steps,
+      steps, verify: true,
       note: isShort ? null : `The column is slender (λ = ${lambda.toFixed(1)}). An additional eccentricity of ${delta.toFixed(0)} mm has been applied to the moments.`,
     })],
     scratch: { lambda, He, isShort, delta, leastDim, braced },
@@ -7084,29 +7021,11 @@ function ecpc_axial(ctx, sc) {
 
   const Asc = sec.Asc;
   const Ac = sec.gross - Asc;
-  const PuGross = kc * mat.fcu * Ac + ks * mat.fy * Asc;
+  const Pu = kc * mat.fcu * Ac + ks * mat.fy * Asc;
   const Nu = Math.abs(Number(actions.Nu) || 0);
 
-  // For a spiral column the gross-section expression is not the whole rule.
-  // The confinement expression uses the core area inside the spiral and adds
-  // the spiral's own contribution, and the lower of the two governs.
-  const coverToSpiral = Number(ctx.geometry.cover) || 0;
-  const Dk = Math.max(0, (sec.circular ? sec.D : Math.min(sec.b, sec.t)) - 2 * coverToSpiral);
-  const Ak = sec.circular ? Math.PI / 4 * Dk * Dk : Dk * Dk;
-  const fyp = Number(mat.fyp) || mat.fy;
-  const Vsp = Number(ctx.geometry.Vsp) || 0;
-  const PuConfined = spiral
-    ? colD('spiralConfinedConcrete') * mat.fcu * Math.max(0, Ak - Asc)
-      + colD('spiralConfinedSteel') * mat.fy * Asc
-      + colD('spiralHelix') * fyp * Vsp
-    : null;
-
-  const Pu = spiral && PuConfined !== null ? Math.min(PuGross, PuConfined) : PuGross;
-
   const rho = sec.gross > 0 ? Asc / sec.gross : 0;
-  const ascMin = spiral
-    ? Math.max(colD('rhoMinSpiralGross') * sec.gross, colD('rhoMinSpiralCore') * Ak)
-    : colD('rhoMin') * sec.gross;
+  const ascMin = colD('rhoMin') * sec.gross;
   const ascMax = colD('rhoMax') * sec.gross;
 
   const steps = [
@@ -7117,29 +7036,11 @@ function ecpc_axial(ctx, sc) {
       expression: 'A_c = A_g − A_sc', value: Ac, dimension: 'area',
     }),
     step({
-      code: ECPC, clause: '6.4', symbol: spiral ? 'P_u,gross' : 'P_u',
-      description: `Ultimate axial capacity of a ${spiral ? 'spirally reinforced column, gross section expression' : 'tied column'}`,
-      expression: spiral ? 'P_u = 0.40 f_cu (A_c − A_sc) + 0.76 f_y A_sc' : 'P_u = 0.35 f_cu (A_c − A_sc) + 0.67 f_y A_sc',
+      code: ECPC, clause: '6.4', symbol: 'P_u', description: `Ultimate axial capacity of a ${spiral ? 'spirally reinforced' : 'tied'} column`,
+      expression: spiral ? 'P_u = 0.40 f_cu A_c + 0.76 f_y A_sc' : 'P_u = 0.35 f_cu A_c + 0.67 f_y A_sc',
       substitution: `${kc} × ${mat.fcu} × ${Ac.toFixed(0)} + ${ks} × ${mat.fy} × ${Asc.toFixed(0)}`,
-      value: PuGross, dimension: 'force',
+      value: Pu, dimension: 'force', verify: true,
     }),
-    ...(spiral ? [
-      step({
-        code: ECPC, clause: '6.4', symbol: 'A_k', description: 'Area of the concrete core inside the spiral',
-        value: Ak, dimension: 'area',
-      }),
-      step({
-        code: ECPC, clause: '6.4', symbol: 'P_u,confined',
-        description: 'Ultimate axial capacity from the confinement expression',
-        expression: 'P_u = 0.35 f_cu (A_k − A_sc) + 0.67 f_y A_sc + 1.38 f_yp V_sp',
-        value: PuConfined, dimension: 'force',
-        note: Vsp > 0 ? null : 'The volume of spiral per unit length V_sp has not been entered, so the spiral contributes nothing to this expression. Enter it, or the confined capacity is understated.',
-      }),
-      derived({
-        symbol: 'P_u', description: 'Governing capacity, the lower of the two expressions',
-        value: Pu, dimension: 'force',
-      }),
-    ] : []),
     step({
       code: ECPC, clause: '6.4', symbol: 'μ', description: 'Longitudinal reinforcement ratio',
       value: rho,
@@ -7154,19 +7055,14 @@ function ecpc_axial(ctx, sc) {
         code: ECPC, clause: '6.4', clauseTitle: 'Design of columns subject to axial load',
         demand: Nu, capacity: Pu, dimension: 'force',
         failureMode: 'Crushing of the column under axial compression',
-        steps,
-        note: spiral ? 'Both the gross-section and the confinement expressions have been evaluated and the lower governs.' : null,
+        steps, verify: true,
       }),
       check({
-        id: 'rhoMin',
-        title: spiral ? 'Minimum longitudinal reinforcement, spiral column' : 'Minimum longitudinal reinforcement',
+        id: 'rhoMin', title: 'Minimum longitudinal reinforcement',
         code: ECPC, clause: '6.4', clauseTitle: 'Reinforcement limits for columns',
         demand: ascMin, capacity: Asc, dimension: 'area',
         failureMode: 'Insufficient longitudinal steel for a column',
-        steps: [],
-        note: spiral
-          ? 'A spiral column takes the greater of one per cent of the gross area and 1.2 per cent of the core, not the 0.8 per cent that applies to a tied column.'
-          : null,
+        verify: true, steps: [],
       }),
       check({
         id: 'rhoMax', title: 'Maximum longitudinal reinforcement',
@@ -7176,7 +7072,7 @@ function ecpc_axial(ctx, sc) {
         verify: true, steps: [],
       }),
     ],
-    scratch: { Pu, PuGross, PuConfined, Ak, Ac, Asc, rho, ascMin, ascMax, spiral },
+    scratch: { Pu, Ac, Asc, rho, ascMin, ascMax, spiral },
   };
 }
 
@@ -7303,18 +7199,10 @@ const ECP203_COL_HANDLERS = {
 const ECPF = 'ECP 203-2020';
 
 const ECP203_FDN_DATA = {
-  // The office review found this to be office practice rather than a value the
-  // code prescribes, so it is declared as an assumption and not as a clause.
-  ownWeight: { value: 1.10, clause: null, practice: true, desc: 'Allowance for the footing self weight and overburden, as a factor on the column working load', verify: false },
-  qcuSlab: { value: 0.16, clause: '4-2-2', desc: 'One-way shear strength without designed stirrups, q_cu = 0.16 sqrt(f_cu/gamma_c)', verify: false },
-  // Punching is governed by the least of three expressions, not by the first
-  // one alone. The earlier version used only the basic value, which overstates
-  // the resistance on an elongated column and on one near an edge.
-  qcupBase: { value: 0.316, clause: '4-2-4', desc: 'Basic punching value, 0.316 sqrt(f_cu/gamma_c)', verify: false },
-  qcupAspect: { value: 0.316, clause: '4-2-4', desc: 'Aspect-ratio expression, 0.316 (0.5 + a/b) sqrt(f_cu/gamma_c)', verify: false },
-  qcupPerimeter: { value: 0.8, clause: '4-2-4', desc: 'Perimeter expression, 0.8 (α d/b_0 + 0.2) sqrt(f_cu/gamma_c)', verify: false },
-  qcupCap: { value: 1.70, clause: '4-2-4', desc: 'Absolute cap on punching resistance without shear reinforcement, N/mm2', verify: false },
-  alphaInterior: { value: 4.0, clause: '4-2-4', desc: 'α for an interior column in the perimeter expression', verify: true },
+  ownWeight: { value: 1.10, clause: '7.1', desc: 'Allowance for the footing self weight and overburden, as a factor on the column working load', verify: true },
+  qcuSlab: { value: 0.16, clause: '4.2.2', desc: 'One-way shear strength of a slab without stirrups, q_cu = 0.16 sqrt(f_cu/gamma_c)', verify: true },
+  qcupBase: { value: 0.316, clause: '4.2.4', desc: 'Punching shear strength coefficient, q_cup = 0.316 sqrt(f_cu/gamma_c)', verify: true },
+  qcupCap: { value: 1.60, clause: '4.2.4', desc: 'Upper limit coefficient on punching shear strength', verify: true },
   tensionShift: { value: 0, clause: '4.2', desc: 'Critical section for bending taken at the column face', verify: false },
 };
 
@@ -7347,11 +7235,7 @@ function ecpf_bearing(ctx) {
   const fMin = A > 0 ? (Ntotal / A) - (Z > 0 ? Mw / Z : 0) : -Infinity;
 
   const steps = [
-    input({
-      symbol: 'k_ow', value: ECP203_FDN_DATA.ownWeight.value,
-      description: 'Allowance for the footing self weight and overburden',
-      note: 'Office practice, not a coefficient ECP 203 prescribes. Confirmed as such in the office review, and printed here as a stated assumption rather than as a code value.',
-    }),
+    fDataStep('ownWeight', 'k_ow'),
     derived({
       symbol: 'N_total', description: 'Working load including the allowance for the footing weight',
       expression: 'N_total = k_ow N_w', value: Ntotal, dimension: 'force',
@@ -7400,6 +7284,7 @@ function ecpf_punching(ctx, sc) {
   const d = sec.d;
   const Nu = Math.abs(Number(actions.Nu) || 0);
 
+  // Critical perimeter at d/2 from the column face
   const a = sec.colB + d;
   const b = sec.colL + d;
   const b0 = 2 * (a + b);
@@ -7408,67 +7293,42 @@ function ecpf_punching(ctx, sc) {
     ? (Nu * (1 - punchedArea / (sec.L * sec.B))) / (b0 * d)
     : Infinity;
 
-  const root = Math.sqrt(mat.fcu / gC);
-  const longSide = Math.max(sec.colL, sec.colB);
-  const shortSide = Math.min(sec.colL, sec.colB);
-  const ratio = longSide > 0 ? shortSide / longSide : 1;
-  const alpha = fD('alphaInterior');
-
-  // The least of the three expressions governs, capped in absolute terms.
-  const qBasic = fD('qcupBase') * root;
-  const qAspect = fD('qcupAspect') * (0.5 + ratio) * root;
-  const qPerim = fD('qcupPerimeter') * ((alpha * d) / b0 + 0.2) * root;
-  const candidates = [
-    { name: 'basic value', q: qBasic, expression: 'q_cup = 0.316 √(f_cu/γ_c)' },
-    { name: 'column aspect ratio', q: qAspect, expression: 'q_cup = 0.316 (0.5 + a/b) √(f_cu/γ_c)' },
-    { name: 'critical perimeter', q: qPerim, expression: 'q_cup = 0.80 (α d/b₀ + 0.2) √(f_cu/γ_c)' },
-  ];
-  const governing = candidates.reduce((x, y) => (y.q < x.q ? y : x));
-  const cap = fD('qcupCap');
-  const qcup = Math.min(governing.q, cap);
-  const cappedByAbsolute = governing.q > cap;
+  const qcup = Math.min(
+    fD('qcupBase') * Math.sqrt(mat.fcu / gC),
+    fD('qcupCap') * Math.sqrt(mat.fcu / gC),
+  );
 
   const steps = [
     step({
-      code: ECPF, clause: '4-2-4', symbol: 'b_0', description: 'Critical punching perimeter, taken at d/2 from the column face',
+      code: ECPF, clause: '4.2.4', symbol: 'b_0', description: 'Critical punching perimeter, taken at d/2 from the column face',
       expression: 'b₀ = 2[(c₁ + d) + (c₂ + d)]',
       substitution: `2[(${sec.colB} + ${d.toFixed(0)}) + (${sec.colL} + ${d.toFixed(0)})]`,
       value: b0, dimension: 'length',
     }),
     step({
-      code: ECPF, clause: '4-2-4', symbol: 'q_up', description: 'Applied punching shear stress',
+      code: ECPF, clause: '4.2.4', symbol: 'q_up', description: 'Applied punching shear stress',
       expression: 'q_up = N_u (1 − A_punched / A_footing) / (b₀ d)',
       value: qup, dimension: 'stress',
     }),
-    ...candidates.map((c) => step({
-      code: ECPF, clause: '4-2-4', symbol: 'q_cup',
-      description: `Punching resistance from the ${c.name}`,
-      expression: c.expression,
-      value: c.q, dimension: 'stress',
-    })),
+    fDataStep('qcupBase', 'q_cup coefficient'),
     step({
-      code: ECPF, clause: '4-2-4', symbol: 'q_cup,max',
-      description: 'Absolute cap on the punching resistance without shear reinforcement',
-      value: cap, dimension: 'stress',
-    }),
-    derived({
-      symbol: 'q_cup,gov',
-      description: `Governing punching resistance, from the ${governing.name}${cappedByAbsolute ? ', reduced to the absolute cap' : ''}`,
-      value: qcup, dimension: 'stress',
+      code: ECPF, clause: '4.2.4', symbol: 'q_cup', description: 'Punching shear strength of the concrete',
+      expression: 'q_cup = 0.316 √(f_cu / γ_c), not exceeding 1.60 √(f_cu / γ_c)',
+      value: qcup, dimension: 'stress', verify: true,
     }),
   ];
 
   return {
     steps,
     checks: [check({
-      id: 'punching', title: `Punching shear, governed by the ${governing.name}`,
-      code: ECPF, clause: '4-2-4', clauseTitle: 'Punching shear',
+      id: 'punching', title: 'Punching shear around the column',
+      code: ECPF, clause: '4.2.4', clauseTitle: 'Punching shear',
       demand: qup, capacity: qcup, dimension: 'stress',
       failureMode: 'The column punches through the footing on a cone around its perimeter',
-      steps,
-      note: 'Three expressions are evaluated and the least governs; α is taken for an interior column. Only the concentric case is calculated: where a moment is transferred to the footing, the unbalanced moment must be added to the punching stress, which this engine does not do.',
+      steps, verify: true,
+      note: 'Only the concentric case is calculated. Where a moment is transferred to the footing, ECP 203 requires the unbalanced moment to be added to the punching stress, which this engine does not do.',
     })],
-    scratch: { b0, qup, qcup, punchingGoverning: governing.name },
+    scratch: { b0, qup, qcup },
   };
 }
 
@@ -7503,7 +7363,7 @@ function ecpf_oneWayShear(ctx, sc) {
     fDataStep('qcuSlab', 'q_cu coefficient'),
     step({
       code: ECPF, clause: '4.2.2', symbol: 'q_cu', description: 'One-way shear strength of a slab without stirrups',
-      expression: 'q_cu = 0.16 √(f_cu / γ_c)', value: qcu, dimension: 'stress',
+      expression: 'q_cu = 0.16 √(f_cu / γ_c)', value: qcu, dimension: 'stress', verify: true,
     }),
   ];
 
@@ -7542,7 +7402,7 @@ function ecpf_bending(ctx, sc) {
   const As = Number.isFinite(aDepth) ? (k * aDepth) / fyd : NaN;
   const asMin = Math.max(
     (ECP203_DATA.asMinFactor.value * Math.sqrt(mat.fcu) / mat.fy) * 1000 * d,
-    (ECP203_DATA.asMinSecond.value / mat.fy) * 1000 * d,
+    (ECP203_DATA.asMinFloorPct.value / 100) * 1000 * d,
   );
   const AsProvided = Math.max(As, asMin);
 
@@ -7606,20 +7466,11 @@ const ECP203_FDN_HANDLERS = {
 const ECPS = 'ECP 203-2020';
 
 const ECP203_SLAB_DATA = {
-  // The office review found separate values for one-way and two-way slabs and
-  // was explicit that they must not be merged. The earlier single set applied
-  // the one-way values to both, which is unconservative on a two-way slab.
   thicknessOneWay: {
     clause: '6.1',
-    desc: 'Span to thickness limits for a one-way solid slab',
+    desc: 'Span to thickness limits for a one-way solid slab, below which deflection need not be calculated',
     simple: 30, continuousOne: 35, continuousTwo: 40, cantilever: 10,
-    verify: false,
-  },
-  thicknessTwoWay: {
-    clause: '6.1',
-    desc: 'Span to thickness limits for a two-way solid slab',
-    simple: 35, continuousOne: 40, continuousTwo: 45, cantilever: 10,
-    verify: false,
+    verify: true,
   },
   qcuSlab: { value: 0.16, clause: '4.2.2', desc: 'Shear strength of a slab without stirrups, q_cu = 0.16 sqrt(f_cu/gamma_c)', verify: true },
   asMinPct: { value: 0.15, clause: '6.1', desc: 'Minimum main reinforcement as a percentage of the gross section', verify: true },
@@ -7636,11 +7487,9 @@ function sD(k) { return ECP203_SLAB_DATA[k]; }
 
 /* ---------------- thickness and span ---------------- */
 
-function ecps_thickness(ctx, sc) {
+function ecps_thickness(ctx) {
   const { sec, geometry } = ctx;
-  // Direction runs first, so by the time this does the slab knows which it is.
-  const twoWay = sc && sc.oneWay === false;
-  const table = sD(twoWay ? 'thicknessTwoWay' : 'thicknessOneWay');
+  const table = sD('thicknessOneWay');
   const condition = geometry.condition || 'simple';
   const k = table[condition] || table.simple;
   const tMin = geometry.span / k;
@@ -7648,11 +7497,11 @@ function ecps_thickness(ctx, sc) {
   const steps = [
     step({
       code: ECPS, clause: '6.1', symbol: 'L/k',
-      description: `Minimum thickness for a ${condition} ${twoWay ? 'two-way' : 'one-way'} slab, deemed to satisfy deflection`,
+      description: `Minimum thickness for a ${condition} one-way slab, deemed to satisfy deflection`,
       expression: `t ≥ L / ${k}`,
       substitution: `${geometry.span} / ${k}`,
-      value: tMin, dimension: 'length',
-      note: `Confirmed in the office review of ECP 203-2020. The one-way and two-way values differ and are not interchangeable; this slab is ${twoWay ? 'two-way' : 'one-way'}.`,
+      value: tMin, dimension: 'length', verify: true,
+      note: 'Read from a published table. Confirm against the controlled copy.',
     }),
     step({
       code: ECPS, clause: '6.1', symbol: 'd', description: 'Effective depth',
@@ -7667,7 +7516,7 @@ function ecps_thickness(ctx, sc) {
       code: ECPS, clause: '6.1', clauseTitle: 'Solid slabs — thickness',
       demand: tMin, capacity: sec.t, dimension: 'length',
       failureMode: 'Excessive deflection. Below this thickness the code requires deflection to be calculated explicitly.',
-      steps,
+      steps, verify: true,
       note: 'This is the deemed-to-satisfy route. A thinner slab is not necessarily inadequate, but its deflection must then be calculated, which this engine does not do.',
     })],
     scratch: { tMin, spanCondition: condition },
@@ -7997,7 +7846,7 @@ function ecpb_flexure(ctx, sc) {
   const As = Number.isFinite(aDepth) ? (k * aDepth) / fyd : NaN;
   const asMin = Math.max(
     (ECP203_DATA.asMinFactor.value * Math.sqrt(mat.fcu) / mat.fy) * sec.B * d,
-    (ECP203_DATA.asMinSecond.value / mat.fy) * sec.B * d,
+    (ECP203_DATA.asMinFloorPct.value / 100) * sec.B * d,
   );
   const AsProvided = Math.max(As, asMin);
   const aMax = ECP203_DATA.beta1.value * 0.44 * d;
@@ -8326,7 +8175,7 @@ function ecp202_stem(ctx, sc) {
   const As = Number.isFinite(aDepth) ? (k * aDepth) / fyd : NaN;
   const asMin = Math.max(
     (ECP203_DATA.asMinFactor.value * Math.sqrt(mat.fcu) / mat.fy) * b * d,
-    (ECP203_DATA.asMinSecond.value / mat.fy) * b * d,
+    (ECP203_DATA.asMinFloorPct.value / 100) * b * d,
   );
   const AsProvided = Math.max(As, asMin);
   const aMax = ECP203_DATA.beta1.value * 0.44 * d;
@@ -12911,13 +12760,10 @@ const FORM_SPECS = {
         ],
       },
       {
-        // These are the paths the engine actually reads. An earlier version
-        // invented names for them, so every field here wrote to somewhere
-        // nothing looked at and editing the section changed nothing at all.
         key: 'cfst.rebar', title: 'Reinforcement in the core', fields: [
-          { path: 'geometry.rebar.n', label: 'Number of bars', integer: true },
-          { path: 'geometry.rebar.dia', label: 'Bar diameter', dim: 'length' },
-          { path: 'geometry.rebar.cover', label: 'Cover to the bars', dim: 'length' },
+          { path: 'geometry.bars', label: 'Number of bars', integer: true },
+          { path: 'geometry.barDia', label: 'Bar diameter', dim: 'length' },
+          { path: 'geometry.cover', label: 'Cover to the bars', dim: 'length' },
         ],
       },
       {
@@ -12928,8 +12774,10 @@ const FORM_SPECS = {
         ],
       },
       {
-        key: 'cfst.length', title: 'Length', fields: [
-          { path: 'geometry.length', label: 'System length', dim: 'length' },
+        key: 'cfst.length', title: 'Length and restraint', fields: [
+          { path: 'geometry.L', label: 'System length', dim: 'length' },
+          { path: 'geometry.kY', label: 'Effective length factor about y' },
+          { path: 'geometry.kZ', label: 'Effective length factor about z' },
         ],
       },
     ],
@@ -13029,7 +12877,7 @@ function applyGrade(item, kind, path, value) {
   return next;
 }
 
-function gradeHint(kind, value, item, units) {
+function gradeHint(kind, value, item) {
   if (!value) return 'Enter the strength directly, or choose a grade to fill it in.';
 
   if (kind === 'steel') {
@@ -13037,7 +12885,7 @@ function gradeHint(kind, value, item, units) {
     const s = steelStrength(value, t);
     if (!s) return null;
     if (s.beyondTable) return s.note;
-    return `f_y ${formatStrength(s.fy, units)}, f_u ${formatStrength(s.fu, units)} for the ${t} mm plate, from ${s.standard}. `
+    return `f_y ${s.fy} MPa, f_u ${s.fu} MPa for the ${t} mm plate, from ${s.standard}. `
       + 'The strength falls with thickness, so it is read for the plate in this section rather than from the grade name alone.';
   }
 
@@ -13045,18 +12893,18 @@ function gradeHint(kind, value, item, units) {
     const c = concreteByGrade(value);
     if (!c) return null;
     if (c.fcu !== undefined && c.fctr !== undefined) {
-      return `f_cu ${formatStrength(c.fcu, units)} · E_c ${(c.Ec / 1000).toFixed(1)} GPa · cracking stress ${formatStrength(c.fctr, units)}`;
+      return `f_cu ${c.fcu} MPa · E_c ${(c.Ec / 1000).toFixed(1)} GPa · cracking stress ${c.fctr} MPa`;
     }
     if (c.fck !== undefined) {
-      return `f_ck ${formatStrength(c.fck, units)} cylinder, ${c.fckCube} MPa cube · f_ctm ${formatStrength(c.fctm, units)} · E_cm ${(c.Ecm / 1000).toFixed(1)} GPa`;
+      return `f_ck ${c.fck} MPa cylinder, ${c.fckCube} MPa cube · f_ctm ${c.fctm} MPa · E_cm ${(c.Ecm / 1000).toFixed(1)} GPa`;
     }
-    return `f'_c ${formatStrength(c.fc, units)} · E_c ${(c.Ec / 1000).toFixed(1)} GPa`;
+    return `f'_c ${c.fc} MPa · E_c ${(c.Ec / 1000).toFixed(1)} GPa`;
   }
 
   const b = rebarByGrade(value);
   if (!b) return null;
-  const bits = [`f_yk ${formatStrength(b.fyk, units)}`];
-  if (b.fu) bits.push(`f_u ${formatStrength(b.fu, units)}`);
+  const bits = [`f_yk ${b.fyk} MPa`];
+  if (b.fu) bits.push(`f_u ${b.fu} MPa`);
   if (b.surface) bits.push(b.surface.toLowerCase());
   if (b.weldable) bits.push('weldable');
   if (b.ductility) bits.push(`ductility class ${b.ductility}`);
@@ -14902,7 +14750,7 @@ function renderField(it, f, u, mutate) {
   if (f.grade) {
     return field({
       label: f.label, id,
-      hint: gradeHint(f.grade, raw, it, u),
+      hint: gradeHint(f.grade, raw, it),
       control: select({
         id, value: raw || '',
         placeholder: 'Not from a standard grade',
@@ -14930,11 +14778,6 @@ function renderField(it, f, u, mutate) {
   return field({
     label: f.dim ? `${f.label} (${symbolFor(u, f.dim)})` : f.label,
     id, ident: true,
-    // A strength in kg/cm² is correct and unrecognisable. The grade it
-    // corresponds to is named in MPa everywhere, so the MPa value is shown too.
-    hint: f.dim === 'stress' && symbolFor(u, 'stress') !== 'MPa' && Number(raw) > 0
-      ? formatStrength(Number(raw), u)
-      : null,
     control: numberInput({
       id,
       value: f.dim ? fromBase(Number(raw) || 0, f.dim, u) : (Number(raw) || 0),
@@ -15587,14 +15430,6 @@ function importScreen(app) {
             shape: dims.b && Math.abs(dims.b - dims.d) > 1 ? 'RHS' : (dims.b ? 'SHS' : 'CHS'),
             d: dims.d, b: dims.b || dims.d, h: dims.d, t: dims.tw || dims.tf,
           };
-          // The model knows how long the member is; without it the slenderness
-          // checks run on a column of zero length and pass whatever the section.
-          const jointI = st.model.joints.get((c.members[0] || {}).jointI);
-          const jointJ = st.model.joints.get((c.members[0] || {}).jointJ);
-          const memberLength = (jointI && jointJ)
-            ? Math.hypot(jointJ.x - jointI.x, jointJ.y - jointI.y, jointJ.z - jointI.z) * L
-            : 0;
-          if (memberLength > 0) item.geometry = { ...item.geometry, length: memberLength };
           item.assumptions = generateAssumptions(item, item.code);
           item.actions = { ...item.actions, NEd: worst.P * st.loadFactor, MyEd: worst.M * st.loadFactor };
         } else if (mp.element === 'rc-beam') {
@@ -16059,12 +15894,8 @@ function groupScreen(app, itemId) {
     const sectionFields = (sec) => {
       const spec = specOf(sec);
       if (!spec) return null;
-      // A field that does not apply must not be shown here either. Without
-      // this a circular tube was asked for its width and depth as well as its
-      // diameter, and whichever the engineer filled in was anybody's guess.
       const fields = spec.groups.flatMap((grp) => grp.fields)
-        .filter((f) => /^(geometry|materials|soil)\./.test(f.path))
-        .filter((f) => !f.when || f.when(sec));
+        .filter((f) => /^(geometry|materials|soil)\./.test(f.path));
 
       const write = (path, value) => mutate((x) => ({
         ...x,
@@ -16120,7 +15951,7 @@ function groupScreen(app, itemId) {
         if (f.grade) {
           return field({
             label: f.label, id,
-            hint: gradeHint(f.grade, raw, { ...it, ...sec }, u),
+            hint: gradeHint(f.grade, raw, { ...it, ...sec }),
             control: select({
               id, value: raw || '',
               placeholder: 'Not from a standard grade',
@@ -16311,15 +16142,7 @@ function groupScreen(app, itemId) {
   return host;
 }
 
-/**
- * The worst utilisation under a section, the member that produced it, and the
- * check that governs.
- *
- * Without the check named, enlarging a section that keeps failing tells you
- * nothing: the governing check may be one the section barely affects, as load
- * introduction into a concrete core is, and the engineer is left guessing why
- * a much heavier tube did not help.
- */
+/** The worst utilisation under a section, and the member that produced it. */
 function peakFor(matrix, sec) {
   let worst = null;
   for (const row of matrix.rows) {
@@ -16329,8 +16152,7 @@ function peakFor(matrix, sec) {
   }
   if (!worst) return 'no member evaluated';
   const spare = worst.u < 1 ? ` · ${Math.round((1 - worst.u) * 100)}% spare` : '';
-  const gov = worst.governing ? ` · ${worst.governing.toLowerCase()}` : '';
-  return `highest ${formatNumber(worst.u, 2)} at member ${worst.frame}${spare}${gov}`;
+  return `highest ${formatNumber(worst.u, 2)} at member ${worst.frame}${spare}`;
 }
 
 /** Mass per metre, which is the number a lighter section is chosen for. */
@@ -17222,7 +17044,7 @@ function publicApi(app) {
     serialise, deserialise, suggestedFileName,
     AuditLog,
     // units
-    toBase, fromBase, format, formatWithUnit, formatStrength, UNIT_SYSTEMS,
+    toBase, fromBase, format, formatWithUnit, UNIT_SYSTEMS,
     nextRevision,
     // vocabulary
     CAP, CFST_CHECK_SEQUENCE, COVERAGE,
