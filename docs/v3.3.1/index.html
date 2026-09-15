@@ -246,14 +246,9 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.3.2';
+const PLATFORM_VERSION = '3.3.1';
 
 const VERSION_HISTORY = [
-  {
-    version: '3.3.2',
-    date: '2026-09-15',
-    notes: 'Three fixes to the group screen, two of them faults in the fire control released one version earlier. Recording the basis for waiving fire design did nothing: the click handler read the items from a place they are not kept, so it threw before it saved anything, and the screen came back unchanged with the typed reason still sitting in the box and the members still reading incomplete. Separately, this screen\'s update function took no audit argument, so the log entry the fire decision passed to it was accepted and quietly dropped — a decision that changes a verdict was being made with nobody\'s name and no time against it, which is the one thing a waiver must never be. Both are now covered by tests, including a static one that walks the screens and fails on any store path that does not exist, since neither fault announced itself at the time. Also, the bar diameter and the cover no longer appear when the core has no bars in it, matching the reinforcement grade, which was already hidden: a diameter for bars that are not there describes nothing and invites someone to set it and expect a change.',
-  },
   {
     version: '3.3.1',
     date: '2026-09-15',
@@ -564,8 +559,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "165";
-const RAW_TIME = "2026-09-15T08:26:18.575Z";
+const RAW_NUMBER = "161";
+const RAW_TIME = "2026-09-15T08:22:09.327Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -13188,12 +13183,8 @@ const FORM_SPECS = {
         // nothing looked at and editing the section changed nothing at all.
         key: 'cfst.rebar', title: 'Reinforcement in the core', fields: [
           { path: 'geometry.rebar.n', label: 'Number of bars', integer: true },
-          // A diameter and a cover for bars that are not there describe
-          // nothing. They are hidden with the reinforcement grade rather than
-          // left on screen holding values the engine never reads, which is
-          // what invites someone to set them and expect a change.
-          { path: 'geometry.rebar.dia', label: 'Bar diameter', dim: 'length', when: hasBars },
-          { path: 'geometry.rebar.cover', label: 'Cover to the bars', dim: 'length', when: hasBars },
+          { path: 'geometry.rebar.dia', label: 'Bar diameter', dim: 'length' },
+          { path: 'geometry.rebar.cover', label: 'Cover to the bars', dim: 'length' },
         ],
       },
       {
@@ -14844,9 +14835,7 @@ function designerScreen(app, itemId) {
                 onCommit: (v) => mutate((x) => ({ ...x, geometry: { ...x.geometry, rebar: { ...x.geometry.rebar, n: Math.round(v) } } })),
               }),
             }),
-            // A diameter for bars that are not there describes nothing, so it
-            // goes when the count goes, along with the reinforcement grade.
-            !hasBars(it) ? null : field({
+            field({
               label: `Bar diameter (${L('length')})`, id: 'in-dbar', ident: true,
               control: numberInput({
                 id: 'in-dbar', value: fromBase(g.rebar.dia, 'length', u), min: 0,
@@ -16350,17 +16339,11 @@ function groupScreen(app, itemId) {
   const item = () => project().items.find((i) => i.id === itemId);
   const units = () => project().units;
 
-  // The audit argument is not optional decoration. A decision that changes a
-  // verdict — waiving fire design is one — has to be recorded with a name and
-  // a time, or the sheet asserts something no one is answerable for. This
-  // signature took a second argument on the designer screen and not here, so
-  // an audit entry passed in was accepted and silently dropped.
-  function mutate(fn, { audit } = {}) {
+  function mutate(fn) {
     app.store.update((s) => {
       const i = s.project.items.findIndex((x) => x.id === itemId);
       s.project.items[i] = fn({ ...s.project.items[i] });
     });
-    if (audit) app.audit.append(audit);
     render();
   }
 
@@ -16707,12 +16690,7 @@ function groupScreen(app, itemId) {
         it.fire.required ? null : button('Record this decision', {
           small: true,
           onClick: () => {
-            // item() reads the item out of the project. An earlier version
-            // reached for app.store.state.items, which is not where items
-            // live, so the click threw before it recorded anything and the
-            // reason the engineer had typed went nowhere.
-            const live = item() || it;
-            const reason = String(live.fire.reason || '').trim();
+            const reason = String((app.store.state.items.find((x) => x.id === itemId) || it).fire.reason || '').trim();
             if (!reason) { toast('State the basis first.', 'err'); return; }
             mutate((x) => ({ ...x, fire: { ...x.fire, reason } }), {
               audit: {
