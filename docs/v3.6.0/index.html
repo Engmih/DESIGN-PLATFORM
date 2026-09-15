@@ -246,14 +246,9 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.6.1';
+const PLATFORM_VERSION = '3.6.0';
 
 const VERSION_HISTORY = [
-  {
-    version: '3.6.1',
-    date: '2026-09-15',
-    notes: 'Supersedes v3.6.0, which was pinned from an earlier build and then built again before it was ever published, leaving the pinned folder and the live copy holding different files under the same version number. Nothing else changed. A pinned link exists to reproduce a signed sheet literally, so a version number has to mean one build; v3.6.0 is left in place untouched.',
-  },
   {
     version: '3.6.0',
     date: '2026-09-15',
@@ -589,8 +584,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "196";
-const RAW_TIME = "2026-09-15T19:17:08.104Z";
+const RAW_NUMBER = "194";
+const RAW_TIME = "2026-09-15T19:09:12.629Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
