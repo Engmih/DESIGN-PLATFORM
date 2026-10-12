@@ -258,9 +258,14 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.53.1';
+const PLATFORM_VERSION = '3.53.2';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.53.2',
+    date: '2026-10-07',
+    notes: "RC beam: bars in rows. Each face takes as many bars per row as fit at the clear distance of ECP 203-2020 §7-3-3-1 (the bar diameter, or 1,5 times the aggregate size), across the row and between rows, and the rest in the next row; the engineer may set the number of rows. The effective depth is taken to the centroid of the bars of each face and every check of the beam uses it — moment, least steel, shear, stirrups, span to depth and axial force. The moment check confirms that the row nearest the neutral axis yields. A web too narrow for two bars across fails, since the stirrup could not hold a bar in each corner. Axial tension with bending outside the band d′ to d is now designed by strain compatibility to §4-2-1-4(b) with the bars row by row; it read not implemented before. The shop drawing shows the rows. RC beam results change; no other calculation changed.",
+  },
   {
     version: '3.53.1',
     date: '2026-10-07',
@@ -941,8 +946,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "653";
-const RAW_TIME = "2026-10-06T22:27:47.555Z";
+const RAW_NUMBER = "660";
+const RAW_TIME = "2026-10-06T22:55:36.561Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -1735,6 +1740,8 @@ const UI = {
   'Tie yield f_yst': 'إجهاد خضوع الكانات f_yst',
   'Main bar yield f_y': 'إجهاد خضوع الحديد الرئيسي f_y',
   'Ties per metre run': 'عدد الكانات في المتر الطولي',
+  'Bottom bars, rows (blank: as many as fit per row)': 'الحديد السفلي، عدد الصفوف (فارغ: أقصى عدد في كل صف)',
+  'Top bars, rows (blank: as many as fit per row)': 'الحديد العلوي، عدد الصفوف (فارغ: أقصى عدد في كل صف)',
   'Side bars on each face, number (depth over 600 mm)': 'أسياخ الانكماش على كل جانب، العدد (عمق أكبر من 600 مم)',
   'Side bars, diameter': 'أسياخ الانكماش، القطر',
   'Slab thickness on the beam (blank: full depth taken)': 'سمك البلاطة على الكمرة (فارغ: يؤخذ العمق الكلي)',
@@ -6582,6 +6589,7 @@ function createBeamItem(patch = {}) {
     barsBottom: '', barsTop: '', topBarDia: '',
     stirrupLegs: '', stirrupsPerMetre: '', aggMax: '',
     sideBarsPerFace: '', sideBarDia: '', slabThickness: '',
+    rowsBottom: '', rowsTop: '',
   };
   // Blank: v3.43.0 removed every strength and action nobody had chosen.
   base.materials = { fcu: '', fy: '', fyStirrup: '' };
@@ -9328,6 +9336,38 @@ const BEAM_SUPPORT_LABELS = {
   cantilever: 'Cantilever',
 };
 
+/**
+ * v3.53.2: the bars of one face in rows, ECP 203-2020 §7-3-3-1.
+ *
+ * The clear distance between bars, across the width and between rows, is not
+ * less than the bar diameter or 1,5 times the largest aggregate size, the
+ * greater (Figure 7-2-a). As many bars as fit go in the outer row and the rest
+ * in the next; the engineer may set the number of rows instead. Distances are
+ * from the face the bars sit against, to the bar centres.
+ */
+function beamBarRows(n, dia, { b, cover, stirrupDia, agg = 0, rows = 0 }) {
+  const N = Math.max(0, Math.round(Number(n) || 0));
+  const phi = Number(dia) || 0;
+  const s = Math.max(phi, 1.5 * (Number(agg) || 0));
+  const w = b - 2 * cover - 2 * stirrupDia;
+  const fitPerRow = phi > 0 ? Math.max(0, Math.floor((w + s) / (phi + s) + 1e-9)) : 0;
+  const out = { n: N, dia: phi, s, w, fitPerRow, rows: [], centroid: cover + stirrupDia + phi / 2, given: Number(rows) > 0 };
+  if (!(N > 0) || !(phi > 0)) return out;
+  let nRows;
+  if (out.given) nRows = Math.round(Number(rows));
+  else nRows = fitPerRow > 0 ? Math.ceil(N / fitPerRow) : 1;
+  nRows = Math.max(1, Math.min(nRows, N));
+  const per = Math.ceil(N / nRows);
+  let left = N;
+  for (let i = 0; i < nRows; i += 1) {
+    const k = Math.min(per, left);
+    left -= k;
+    out.rows.push({ n: k, y: cover + stirrupDia + phi / 2 + i * (phi + s), clear: k > 1 ? (w - k * phi) / (k - 1) : null });
+  }
+  out.centroid = out.rows.reduce((a, r) => a + r.n * r.y, 0) / N;
+  return out;
+}
+
 /** Geometry of a rectangular or flanged section. All mm, N, MPa. */
 function beamSection(g) {
   const b = Number(g.b) || 0;
@@ -9337,15 +9377,22 @@ function beamSection(g) {
   const stirrupDia = Number(g.stirrupDia) || 0;
   // v3.53.0: the top bars have their own diameter.
   const topBarDia = Number(g.topBarDia) || barDia;
-  const d = Math.max(0, t - cover - stirrupDia - barDia / 2);
+  // v3.53.2: each face in rows, and the depths to the centroid of its bars.
+  const opts = { b, cover, stirrupDia, agg: Number(g.aggMax) || 0 };
+  const rowsBottom = beamBarRows(g.barsBottom, barDia, { ...opts, rows: g.rowsBottom });
+  const rowsTop = beamBarRows(g.barsTop, topBarDia, { ...opts, rows: g.rowsTop });
+  const yb = Number(g.barsBottom) > 0 ? rowsBottom.centroid : cover + stirrupDia + barDia / 2;
+  const yt = Number(g.barsTop) > 0 ? rowsTop.centroid : cover + stirrupDia + topBarDia / 2;
+  const d = Math.max(0, t - yb);
   return {
     b, t, cover, barDia, stirrupDia, topBarDia,
     d,
-    // To the centre of the top bars (the compression steel under sagging).
-    dPrime: cover + stirrupDia + topBarDia / 2,
+    rowsBottom, rowsTop,
+    // To the centroid of the top bars (the compression steel under sagging).
+    dPrime: yt,
     // Under hogging: the top bars in tension, the bottom bars in compression.
-    dTop: Math.max(0, t - cover - stirrupDia - topBarDia / 2),
-    dPrimeBottom: cover + stirrupDia + barDia / 2,
+    dTop: Math.max(0, t - yt),
+    dPrimeBottom: yb,
     area: b * t,
     barArea: Math.PI / 4 * barDia * barDia,
   };
@@ -13241,10 +13288,17 @@ function ecp_flexure(ctx) {
   const checks = [];
   const scratch = { AsBottomProvided: AsBot, AsTopProvided: AsTop, cMax, Rmax };
 
-  const face = (key, M, As, AsComp, d, dPrime, tensionName, compName, id, title) => {
+  const face = (key, M, As, AsComp, d, dPrime, tensionName, compName, id, title, rowsT) => {
     const req = ecpBeamSteelFor({ M, b, d, dPrime, t, fcu, fy, cMax, Rmax });
     const mn = ecpBeamAsMin({ b, d, t, fcu, fy, AsCalc: req.As });
     const cap = ecpBeamCapacity({ b, d, dPrime, As, AsComp, fcu, fy, cMax });
+    // v3.53.2: bars in more than one row act at their centroid; the row
+    // nearest the neutral axis must still yield for that to hold (4-2-1-1).
+    const inner = rowsT && rowsT.rows && rowsT.rows.length > 1 ? t - rowsT.rows[rowsT.rows.length - 1].y : null;
+    const cNA = Number.isFinite(cap.a) ? cap.a / ECP203_DATA.beta1.value : null;
+    const epsInner = inner !== null && cNA > 0 ? 0.003 * (inner - cNA) / cNA : null;
+    const epsY = fyd / 200000;
+    const innerYields = epsInner === null || epsInner >= epsY - 1e-12;
     const fs = [
       step({
         code: ECP, clause: req.doubly ? '4-2-1-2' : '4-2-1-2', symbol: `A_s,req (${key})`,
@@ -13268,7 +13322,7 @@ function ecp_flexure(ctx) {
         code: ECP, clause: '4-2-1-2', symbol: `M_R (${key})`,
         description: `Moment the ${tensionName.toLowerCase()} bars placed can carry`,
         expression: cap.comp ? "M_R = 0,67 (f_cu/γ_c) b a (d − a/2) + A's (f_y/γ_s)(d − d'), a = (A_s − A's)(f_y/γ_s)/(0,67 (f_cu/γ_c) b)" : 'M_R = A_s (f_y/γ_s)(d − a/2), a = A_s (f_y/γ_s)/(0,67 (f_cu/γ_c) b)',
-        substitution: `A_s = ${fmt(As)} mm²${cap.comp ? `, A's = ${fmt(AsComp)} mm² (d'/d = ${fmt(cap.ratio, 3)} ≤ ${cap.lim})` : (AsComp > 0 ? ` (the ${compName.toLowerCase()} bars not counted${cap.lim === null ? ': no d\'/d limit for this grade' : cap.ratio > cap.lim ? `: d'/d = ${fmt(cap.ratio, 3)} > ${cap.lim}` : ''})` : '')} → a = ${fmt(cap.a)} mm, c/d = ${fmt(cap.cd, 3)} → M_R = ${Number.isFinite(cap.MR) ? `${fmt(cap.MR / 1e6, 1)} kN·m` : 'none: c/d beyond (c/d)max'}`,
+        substitution: `${rowsT && rowsT.rows.length > 1 ? `${rowsT.rows.map((r) => r.n).join(' + ')} bars in ${rowsT.rows.length} rows, centroid ${fmt(rowsT.centroid)} mm from the face → d = ${fmt(d)} mm; ` : ''}A_s = ${fmt(As)} mm²${cap.comp ? `, A's = ${fmt(AsComp)} mm² (d'/d = ${fmt(cap.ratio, 3)} ≤ ${cap.lim})` : (AsComp > 0 ? ` (the ${compName.toLowerCase()} bars not counted${cap.lim === null ? ': no d\'/d limit for this grade' : cap.ratio > cap.lim ? `: d'/d = ${fmt(cap.ratio, 3)} > ${cap.lim}` : ''})` : '')} → a = ${fmt(cap.a)} mm, c/d = ${fmt(cap.cd, 3)} → M_R = ${Number.isFinite(cap.MR) ? `${fmt(cap.MR / 1e6, 1)} kN·m` : 'none: c/d beyond (c/d)max'}`,
         value: cap.MR, dimension: 'moment',
       }),
     ];
@@ -13276,11 +13330,11 @@ function ecp_flexure(ctx) {
     const strength = !(M > 0) ? null : check({
       id, title, code: ECP, clause: '4-2-1-2', clauseTitle: 'Sections subjected to flexure',
       demand: M, capacity: Number.isFinite(cap.MR) ? cap.MR : 0, dimension: 'moment',
-      status: !Number.isFinite(cap.MR) ? CHECK_STATUS.FAIL : (M <= cap.MR + 1e-6 ? CHECK_STATUS.PASS : CHECK_STATUS.FAIL),
+      status: !Number.isFinite(cap.MR) || !innerYields ? CHECK_STATUS.FAIL : (M <= cap.MR + 1e-6 ? CHECK_STATUS.PASS : CHECK_STATUS.FAIL),
       utilisation: Number.isFinite(cap.MR) && cap.MR > 0 ? M / cap.MR : Infinity,
       failureMode: `Flexure — the ${tensionName.toLowerCase()} bars placed do not carry the moment`,
       steps: fs,
-      note: `${req.strainCompat ? 'The moment needs compression steel outside the d\'/d limit of 4-2-1-2-د(1); the code then asks for strain compatibility, which is not carried out here. ' : ''}Required ${Number.isFinite(req.As) ? `${fmt(Math.max(req.As, mn.asMin))} mm²${req.doubly ? ` with A's ${fmt(req.AsComp)} mm²` : ''}` : '—'}; placed ${fmt(As)} mm².${!Number.isFinite(cap.MR) ? ' The bars placed put the neutral axis beyond (c/d)max: the section is over-reinforced.' : ''}`,
+      note: `${req.strainCompat ? 'The moment needs compression steel outside the d\'/d limit of 4-2-1-2-د(1); the code then asks for strain compatibility, which is not carried out here. ' : ''}Required ${Number.isFinite(req.As) ? `${fmt(Math.max(req.As, mn.asMin))} mm²${req.doubly ? ` with A's ${fmt(req.AsComp)} mm²` : ''}` : '—'}; placed ${fmt(As)} mm².${!Number.isFinite(cap.MR) ? ' The bars placed put the neutral axis beyond (c/d)max: the section is over-reinforced.' : ''}${!innerYields ? ` The row nearest the neutral axis reaches a strain of ${(epsInner * 1000).toFixed(2)}‰, below the yield strain ${(epsY * 1000).toFixed(2)}‰, so the bars cannot all be taken at f_y/γ_s at their centroid; strain compatibility per 4-2-1-1 is needed and is not carried out here.` : ''}`,
     });
     const minC = check({
       id: `${id}.min`, title: `${tensionName} bars — least steel`, code: ECP, clause: '4-2-1-2', clauseTitle: 'Least reinforcement in flexure',
@@ -13293,8 +13347,8 @@ function ecp_flexure(ctx) {
 
   const MuS = Math.abs(Number(actions.Mu) || 0);
   const MuH = Math.abs(Number(actions.MuNeg) || 0);
-  const sag = face('sagging', MuS, AsBot, AsTop, sec.d, sec.dPrime, 'Bottom', 'Top', 'flexure', 'Bottom bars — sagging moment');
-  const hog = face('hogging', MuH, AsTop, AsBot, sec.dTop, sec.dPrimeBottom, 'Top', 'Bottom', 'flexure.hog', 'Top bars — hogging moment');
+  const sag = face('sagging', MuS, AsBot, AsTop, sec.d, sec.dPrime, 'Bottom', 'Top', 'flexure', 'Bottom bars — sagging moment', sec.rowsBottom);
+  const hog = face('hogging', MuH, AsTop, AsBot, sec.dTop, sec.dPrimeBottom, 'Top', 'Bottom', 'flexure.hog', 'Top bars — hogging moment', sec.rowsTop);
   if (sag.strength) checks.push(sag.strength);
   checks.push(sag.minC);
   if (hog.strength) checks.push(hog.strength);
@@ -13321,35 +13375,40 @@ function ecp_flexure(ctx) {
     note: 'Four per cent of b d is office practice, not a clause; the neutral-axis limit of the moment checks above governs ductility and often governs first.',
   }));
 
-  // 7-3-3-1: clear distance between the bars of one layer.
+  // 7-3-3-1: clear distance between the bars, across each row and between
+  // rows (v3.53.2: the bars of a face in as many rows as they need).
   const agg = Number(geometry.aggMax) || 0;
-  const clearOf = (n, dia) => (n > 1 ? (b - 2 * sec.cover - 2 * sec.stirrupDia - n * dia) / (n - 1) : null);
-  const rows = [['Bottom', nb, Number(sec.barDia)], ['Top', nt, Number(sec.topBarDia)]];
   let worst = null;
   const parts = [];
-  for (const [name, n, dia] of rows) {
-    const clear = clearOf(n, dia);
-    const need = Math.max(dia, 1.5 * agg);
-    if (clear === null) { parts.push(`${name}: ${n} bar${n === 1 ? '' : 's'}, no spacing to check`); continue; }
-    parts.push(`${name}: ${n} Ø${dia} in b = ${fmt(b)} leave ${fmt(clear)} mm clear against ${fmt(need)} mm`);
-    const u = clear > 0 ? need / clear : Infinity;
-    if (!worst || u > worst.u) worst = { u, clear, need, name };
+  for (const [name, R] of [['Bottom', sec.rowsBottom], ['Top', sec.rowsTop]]) {
+    if (!R || !(R.n > 0)) continue;
+    const need = R.s;
+    parts.push(`${name}: ${R.n} Ø${R.dia} ${R.rows.length > 1 ? `in ${R.rows.length} rows (${R.rows.map((r) => r.n).join(' + ')})` : 'in one row'}${R.given ? ', rows as given' : ''}; ${R.fitPerRow} fit in one row of b = ${fmt(b)}${R.rows.length > 1 ? `; rows ${fmt(need)} mm clear apart` : ''}`);
+    for (const r of R.rows) {
+      if (r.clear === null) continue;
+      const u = r.clear > 0 ? need / r.clear : Infinity;
+      if (!worst || u > worst.u) worst = { u, clear: r.clear, need, name, k: r.n };
+    }
   }
   const spStep = step({
     code: ECP, clause: '7-3-3-1', symbol: 's_clear',
-    description: 'Clear distance between the bars of one layer',
-    expression: '§7-3-3-1, Figure (7-2-a): not less than the largest bar diameter, or 1,5 times the largest aggregate size, whichever is greater; s = (b − 2 cover − 2 φ_stirrup − n φ)/(n − 1)',
-    substitution: parts.join('; ') + (agg > 0 ? `; aggregate ${fmt(agg)} mm` : '; the aggregate size is not given, so only the bar-diameter limb is formed'),
+    description: 'Bars in rows, and the clear distance between them',
+    expression: '§7-3-3-1, Figure (7-2-a): the clear distance between bars, across a row and between rows, not less than the largest bar diameter or 1,5 times the largest aggregate size, whichever is greater; as many bars as fit go in the outer row and the rest in the next',
+    substitution: parts.join('; ') + (worst ? `; least clear distance across a row ${fmt(worst.clear)} mm against ${fmt(worst.need)} mm` : '') + (agg > 0 ? `; aggregate ${fmt(agg)} mm` : '; the aggregate size is not given, so only the bar-diameter limb is formed'),
     value: worst ? worst.clear : null, dimension: 'length',
   });
   steps.push(spStep);
+  // Fewer than two bars across the width leaves a stirrup corner with no bar
+  // in it; the web is too narrow for the bars, whatever rows they are put in.
+  const noFit = [sec.rowsBottom, sec.rowsTop].some((R) => R && R.n > 1 && R.fitPerRow < 2);
   checks.push(check({
-    id: 'rc.barSpacing', title: 'Bars fit in one layer', code: ECP, clause: '7-3-3-1', clauseTitle: 'Least spacing between bars',
+    id: 'rc.barSpacing', title: 'Bars fit, row by row', code: ECP, clause: '7-3-3-1', clauseTitle: 'Least spacing between bars',
     demand: worst ? worst.need : null, capacity: worst ? Math.max(0, worst.clear) : null, dimension: 'length',
-    utilisation: worst ? worst.u : null,
+    utilisation: noFit ? Infinity : (worst ? worst.u : null),
+    status: noFit ? CHECK_STATUS.FAIL : undefined,
     failureMode: 'Bars too close to place and compact the concrete between them',
     steps: [spStep],
-    note: `${worst && worst.clear <= 0 ? `The ${worst.name.toLowerCase()} bars do not fit across the width at all. ` : ''}One layer is assumed; a second layer is not modelled.${agg > 0 ? '' : ' Give the largest aggregate size to apply the clause in full.'}`,
+    note: `${noFit ? 'Fewer than two bars fit across the width between the stirrup legs at the clear distance of 7-3-3-1, so the stirrup cannot hold a bar in each of its corners: the web is too narrow. ' : ''}${worst && worst.clear <= 0 ? `The ${worst.name.toLowerCase()} row of ${worst.k} does not fit across the width. ` : ''}The effective depth is taken to the centroid of the bars of each face, and every check of this beam uses it.${agg > 0 ? '' : ' Give the largest aggregate size to apply the clause in full.'}`,
   }));
 
   // 6-3-1-9(5): side bars in a beam deeper than 600 mm, slab excluded.
@@ -14771,6 +14830,8 @@ function ecp203_momentAt(Nu, geom, mat) {
   let hi = 5 * geom.t;
   let state = sectionState(hi, geom, mat);
   if (state.N < Nu) return { MR: 0, c: hi, capped: true };      // section cannot carry N_u
+  // v3.53.2: a tension beyond what the steel can carry has no solution either.
+  if (sectionState(lo, geom, mat).N > Nu) return { MR: 0, c: lo, capped: true };
   for (let i = 0; i < 80; i += 1) {
     const mid = (lo + hi) / 2;
     const s = sectionState(mid, geom, mat);
@@ -14919,6 +14980,12 @@ function ecp203_beamActions(ctx, scratch) {
       { d: Number(sec.dPrime), n: asTop },
       { d: Number(sec.d) || (t - Number(sec.dPrime)), n: asBot },
     ];
+    // v3.53.2: the bars row by row where the section has them in rows.
+    const rowLayers = [];
+    const area = (dia) => Math.PI * dia * dia / 4;
+    if (sec.rowsTop && sec.rowsTop.rows.length && asTop > 0) for (const r of sec.rowsTop.rows) rowLayers.push({ d: r.y, n: r.n * area(sec.rowsTop.dia) });
+    if (sec.rowsBottom && sec.rowsBottom.rows.length && asBot > 0) for (const r of sec.rowsBottom.rows) rowLayers.push({ d: t - r.y, n: r.n * area(sec.rowsBottom.dia) });
+    if (rowLayers.length >= 2) geom.layers = rowLayers;
     const compression = P < 0;
     const { MR, c, capped } = ecp203_momentAt(Math.abs(compression ? P : 0), geom, { fcu, fy });
     if (compression) {
@@ -14999,12 +15066,28 @@ function ecp203_beamActions(ctx, scratch) {
           note: `The tension resultant acts within (d − d′), so §4-2-1-4(a) governs and the concrete is not relied on. Provided: A_s = ${asBot.toFixed(0)} mm² against ${asBotReq.toFixed(0)} required, A_s′ = ${asTop.toFixed(0)} mm² against ${asTopReq.toFixed(0)} required. §4-2-1-4(c) also requires the cracking limit state of §4-3-2 to be satisfied, and that is not checked here.`,
         }));
       } else {
+        // v3.53.2: §4-2-1-4(b) — strain compatibility on the assumptions of
+        // 4-2-1-1, the axial force taken as tension at the centroid of the
+        // gross section and the bars row by row.
+        const st = ecp203_momentAt(-P, geom, { fcu, fy });
+        steps.push(step({
+          code: ECP_BA, clause: '4-2-1-4', symbol: 'M_R at N_t',
+          description: 'Moment the section can carry with the axial tension acting, by strain compatibility',
+          expression: '§4-2-1-4(b): strain compatibility per §4-2-1-1 — ε_cu = 0,003, stress block 0,67 f_cu/γ_c over a = 0,80 c, steel stress E_s ε ≤ f_y/γ_s, every row of bars at its own depth; the neutral axis found so that the section balances −N_t',
+          substitution: st.capped
+            ? `N_t = ${(P / 1e3).toFixed(1)} kN exceeds what the bars can carry in tension`
+            : `N_t = ${(P / 1e3).toFixed(1)} kN → c = ${st.c.toFixed(1)} mm, M_R = ${(st.MR / 1e6).toFixed(1)} kN·m against M_u = ${(Mmajor / 1e6).toFixed(1)} kN·m`,
+          value: st.MR, dimension: 'moment', verify: false,
+        }));
         checks.push(check({
-          id: 'rc.axialBending', title: 'Axial tension with bending, outside the steel band',
+          id: 'rc.axialBending', title: 'Axial tension with bending, by strain compatibility',
           code: ECP_BA, clause: '4-2-1-4', clauseTitle: 'Sections under axial tension or combined flexure and axial tension',
-          status: CHECK_STATUS.NOT_IMPLEMENTED,
+          status: st.capped ? CHECK_STATUS.FAIL : (st.MR >= Mmajor ? CHECK_STATUS.PASS : CHECK_STATUS.FAIL),
           failureMode: 'Combined axial tension and bending',
-          note: `The tension resultant acts ${yT.toFixed(0)} mm from the top face, outside the band d′ to d, so §4-2-1-4(a) does not apply and §4-2-1-4(b) sends the section to strain compatibility per §4-2-1-1 with part of the section in compression. That branch is not built here, and the steel-alone result is NOT used in its place: it would overstate the section, because outside the band one of the two layers comes out in compression and the equilibrium above no longer holds. §4-2-1-4(c) also requires the cracking limit state of §4-3-2.`,
+          demand: Mmajor, capacity: st.capped ? 0 : st.MR, dimension: 'moment',
+          utilisation: st.MR > 0 ? Mmajor / st.MR : Infinity,
+          steps: steps.slice(),
+          note: `The tension resultant acts ${yT.toFixed(0)} mm from the top face, outside the band d′ to d, so §4-2-1-4(a) does not apply and §4-2-1-4(b) is used: strain compatibility with part of the section in compression. §4-2-1-4(c) also requires the cracking limit state of §4-3-2, which is not checked here.`,
         }));
       }
     }
@@ -28969,6 +29052,9 @@ const FORM_SPECS = {
           { path: 'geometry.barDia', label: 'Bottom bars, diameter', dim: 'length' },
           { path: 'geometry.barsTop', label: 'Top bars, number', integer: true },
           { path: 'geometry.topBarDia', label: 'Top bars, diameter', dim: 'length' },
+          // v3.53.2: rows; blank lets the platform put as many as fit in each.
+          { path: 'geometry.rowsBottom', label: 'Bottom bars, rows (blank: as many as fit per row)', integer: true, optional: true },
+          { path: 'geometry.rowsTop', label: 'Top bars, rows (blank: as many as fit per row)', integer: true, optional: true },
           // v3.53.1: side bars of a beam deeper than 600 mm, 6-3-1-9(5).
           { path: 'geometry.sideBarsPerFace', label: 'Side bars on each face, number (depth over 600 mm)', integer: true, optional: true },
           { path: 'geometry.sideBarDia', label: 'Side bars, diameter', dim: 'length', optional: true },
@@ -31428,8 +31514,19 @@ function rcBeamSection(item) {
   const yt = t / 2 - c - st - dt / 2;
   const xsB = beamBarXs(nb, b, c + st + db / 2);
   const xsT = beamBarXs(nt, b, c + st + dt / 2);
-  for (const x of xsB) e.push(circle(x, yb, db / 2, LAYER.REBAR || LAYER.OUTLINE));
-  for (const x of xsT) e.push(circle(x, yt, dt / 2, LAYER.REBAR || LAYER.OUTLINE));
+  // v3.53.2: each face row by row, as the calculation placed them.
+  const sec = beamSection(g);
+  const drawRows = (R, fromBottom, dia) => {
+    for (const r of (R && R.rows) || []) {
+      const y = fromBottom ? -t / 2 + r.y : t / 2 - r.y;
+      for (const x of beamBarXs(r.n, b, c + st + dia / 2)) e.push(circle(x, y, dia / 2, LAYER.REBAR || LAYER.OUTLINE));
+    }
+  };
+  if (sec.rowsBottom && sec.rowsBottom.rows.length) drawRows(sec.rowsBottom, true, db);
+  else for (const x of xsB) e.push(circle(x, yb, db / 2, LAYER.REBAR || LAYER.OUTLINE));
+  if (sec.rowsTop && sec.rowsTop.rows.length) drawRows(sec.rowsTop, false, dt);
+  else for (const x of xsT) e.push(circle(x, yt, dt / 2, LAYER.REBAR || LAYER.OUTLINE));
+  const rowsTxt = (R) => (R && R.rows.length > 1 ? ` IN ${R.rows.length} ROWS (${R.rows.map((r) => r.n).join('+')})` : '');
   // v3.53.1: side bars, equally spaced up each face between the layers.
   const nS = Math.round(Number(g.sideBarsPerFace) || 0); const dS = Number(g.sideBarDia) || 0;
   if (nS > 0 && dS > 0) {
@@ -31453,8 +31550,8 @@ function rcBeamSection(item) {
   e.push(dim({ kind: 'horizontal', x1: -b / 2, y1: t / 2, x2: b / 2, y2: t / 2, offset: t * 0.12, value: b, label: 'b', source: 'geometry.b', origin: SOURCE_KIND.VERIFIED }));
   e.push(dim({ kind: 'vertical', x1: b / 2, y1: -t / 2, x2: b / 2, y2: t / 2, offset: b * 0.35, value: t, label: 't', source: 'geometry.t', origin: SOURCE_KIND.VERIFIED }));
   e.push(dim({ kind: 'horizontal', x1: -b / 2, y1: -t / 2, x2: -b / 2 + c, y2: -t / 2, offset: -t * 0.10, value: c, label: 'cover', source: 'geometry.cover', origin: SOURCE_KIND.VERIFIED }));
-  e.push(text(0, t / 2 + t * 0.28, `TOP ${nt} Ø${dt}`, { size: 26, anchor: 'middle' }));
-  e.push(text(0, -t / 2 - t * 0.22, `BOTTOM ${nb} Ø${db}`, { size: 26, anchor: 'middle' }));
+  e.push(text(0, t / 2 + t * 0.28, `TOP ${nt} Ø${dt}${rowsTxt(sec.rowsTop)}`, { size: 26, anchor: 'middle' }));
+  e.push(text(0, -t / 2 - t * 0.22, `BOTTOM ${nb} Ø${db}${rowsTxt(sec.rowsBottom)}`, { size: 26, anchor: 'middle' }));
   e.push(text(0, -t / 2 - t * 0.34, `STIRRUPS Ø${st}, ${legs} LEGS`, { size: 22, anchor: 'middle' }));
   return view({ id: 'section', title: 'Section A–A', scale: null, entities: e });
 }
