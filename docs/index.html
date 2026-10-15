@@ -258,9 +258,14 @@ function formatStrength(valueMPa, units) {
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.53.2';
+const PLATFORM_VERSION = '3.54.0';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.54.0',
+    date: '2026-10-16',
+    notes: "Flat slab. Choosing the panel type fills the thickness with the least of ECP 203-2020 Table (6-3), rounded up to 10 mm; it may be increased, not reduced, and the change is logged. The averaging width is gone: the hogging over a column is taken at the column face (§6-2-5-5(b)), interpolated along the bars, at every joint inside the column. The meshes are entered as bars per metre, at least five, and are checked against the least steel 0,6/f_y of §6-2-1-2-3. Added bars are chosen on the slab plan for each of the four layers: the zones where the mesh is short are found and drawn, the diameter is chosen from the list (a default diameter is set once) and the number per metre is offered at ½, 1, 1½ or 2 times the mesh count; a choice that does not bring the mesh and the added bars up to the steel required cannot be saved. A punching plan colours each column SAFE or UNSAFE; a click on a column adds a drop panel, checked at the column face with d + h and at the drop edge with the slab d, its dimensions against §6-2-5-2(د); the top bars over it are designed on d + h, Table (6-3) takes the row with drop panels when every column without beams has one, and the item reports that the model must be re-analysed with the drops before issue. Both plans zoom with the wheel about the cursor, pan by dragging, pinch on a touch screen and keep their text the same size. The calculation sheet carries the punching plan. Platform: every bar diameter is chosen from 6, 8, 10, 12, 14, 16, 18, 20, 22, 25 and 32 mm. Flat-slab results change; no other calculation changed.",
+  },
   {
     version: '3.53.2',
     date: '2026-10-07',
@@ -946,8 +951,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "660";
-const RAW_TIME = "2026-10-06T22:55:36.561Z";
+const RAW_NUMBER = "673";
+const RAW_TIME = "2026-10-15T21:39:10.450Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -1766,6 +1771,53 @@ const UI = {
   'Spacing': 'التباعد',
   'Top mesh': 'الشبكة العلوية',
   'Slab plan': 'مسقط البلاطة',
+  'Every column checked is SAFE.': 'كل الأعمدة المفحوصة آمنة.',
+  'No punching ratio for this column.': 'لا توجد نسبة اختراق لهذا العمود.',
+  'NOT covered: increase the diameter or the number': 'غير مستوفى: زوّد القطر أو العدد',
+  'Default diameter for added bars changed on the slab plan': 'تم تغيير القطر الافتراضي للحديد الإضافي من مسقط البلاطة',
+  'None': 'لا يوجد',
+  'Punching plan': 'مسقط الاختراق (Punching)',
+  'Bars in X, number per metre (at least 5)': 'أسياخ X، العدد في المتر (5 على الأقل)',
+  'Bars in Y, number per metre (at least 5)': 'أسياخ Y، العدد في المتر (5 على الأقل)',
+  'Added bars (chosen on the slab plan)': 'الحديد الإضافي (يُختار من مسقط البلاطة)',
+  'Diameter offered first for added bars': 'القطر الافتراضي للحديد الإضافي',
+  'Default diameter for added bars': 'القطر الافتراضي للحديد الإضافي',
+  'Added bars, A_s,add': 'الحديد الإضافي A_s,add',
+  'Layer': 'الطبقة',
+  'Mesh (mm²/m)': 'الفرش (مم²/م)',
+  'Needed beyond the mesh': 'المطلوب زيادة عن الفرش',
+  'Added (mm²/m)': 'الإضافي (مم²/م)',
+  'Add bars…': 'إضافة حديد…',
+  'Change…': 'تعديل…',
+  'covered': 'مستوفى',
+  'short': 'غير مستوفى',
+  'not needed': 'غير مطلوب',
+  'Diameter': 'القطر',
+  'Number per metre': 'العدد في المتر',
+  'per metre': 'في المتر',
+  'Offered at ½, 1, 1½ or 2 times the mesh count, so the bars sit between or beside the mesh bars:': 'مقترح بنصف أو مثل أو مرة ونصف أو ضعف عدد أسياخ الفرش، ليقع الحديد الإضافي بين أسياخ الفرش أو بجوارها:',
+  'Remove drop': 'حذف الدروب',
+  'Length in X': 'الطول في اتجاه X',
+  'Width in Y': 'العرض في اتجاه Y',
+  'Thickness below the slab': 'السمك أسفل البلاطة',
+  'Re-analyse': 'إعادة التحليل',
+  'Re-analyse in SAP2000': 'أعد التحليل على SAP2000',
+  'Beyond (c/d)max': 'تجاوز (c/d)max',
+  'beams frame in, not checked': 'كمرات متصلة، لا يُفحص',
+  'drop panel': 'دروب بانل',
+  'zone of the added bars': 'منطقة الحديد الإضافي',
+  'added bars needed, none given': 'حديد إضافي مطلوب ولم يُحدد',
+  'Zoom in': 'تكبير',
+  'Zoom out': 'تصغير',
+  'Fit the plan': 'ملاءمة المسقط',
+  'Fit': 'ملاءمة',
+  'Enter the number per metre.': 'أدخل العدد في المتر.',
+  'The added bars do not cover the steel required. Increase them.': 'الحديد الإضافي لا يستوفي المطلوب. زوّده.',
+  'Enter a drop larger than the column, with a thickness.': 'أدخل دروب أكبر من العمود وله سمك.',
+  'The mesh covers this layer everywhere; no added bars are needed.': 'الفرش يستوفي هذه الطبقة في كل مكان؛ لا يلزم حديد إضافي.',
+  'Choose the panel type below: the least thickness of Table (6-3) is filled in.': 'اختر نوع الباكية: يُملأ أدنى سمك من جدول (6-3) تلقائياً.',
+  'At some joints the section cannot carry the moment without compression steel. No added bars cover that: thicken the slab or add a drop panel on the punching plan.': 'عند بعض العقد لا يتحمل القطاع العزم بدون حديد ضغط، ولا يكفي الحديد الإضافي: زوّد سمك البلاطة أو أضف دروب بانل من مسقط الاختراق.',
+  'A drop panel stiffens the slab at the column. The moments imported were analysed without it: add it to the SAP2000 model, re-run and re-import before the item is issued.': 'الدروب بانل يزيد جساءة البلاطة عند العمود، والعزوم المستوردة محللة بدونه: أضفه لنموذج SAP2000 وأعد التحليل والاستيراد قبل إصدار البند.',
   'Thickness': 'السمك',
   'No element': 'لا يوجد عنصر',
   'Bottom mesh': 'الشبكة السفلية',
@@ -1792,7 +1844,6 @@ const UI = {
   'Reach each side of the column centre': 'الامتداد على كل جانب من محور العمود',
   'Panel that governs the thickness, Table (6-3)': 'الباكية الحاكمة للسمك، جدول (6-3)',
   'Exterior panel with an edge beam (depth ≥ 3t)': 'باكية خارجية بكمرة طرفية (عمق ≥ 3t)',
-  'Averaging width across the bars (blank: none)': 'عرض المتوسط عمودياً على الأسياخ (فارغ: بدون)',
   'Each joint designed for the combination chosen.': 'كل عقدة مصممة على التركيبة المختارة.',
   'No shell results for these areas in the export.': 'لا توجد نتائج Shell لهذه العناصر في الملف.',
   'Each joint designed for the worst of the chosen combinations.': 'كل عقدة مصممة على أسوأ التركيبات المختارة.',
@@ -4297,7 +4348,36 @@ function migrate(project, fromVersion) {
         : it)),
     };
   }
+  // v3.54.0: flat-slab meshes by number per metre; the added bars over the
+  // columns become the added bars of the top layers. Idempotent.
+  if (Array.isArray(p.items)) p = { ...p, items: p.items.map(migrateFeSlab) };
   return { ...p, schemaVersion: SCHEMA_VERSION };
+}
+
+function migrateFeSlab(it) {
+  if (!it || it.kind !== 'feslab' || !it.geometry) return it;
+  const g = { ...it.geometry };
+  let changed = false;
+  for (const k of ['botX', 'botY', 'topX', 'topY']) {
+    const sp = `${k.slice(0, 3)}Sp${k[3]}`; const n = `${k.slice(0, 3)}N${k[3]}`;
+    if (sp in g) {
+      if (g[n] === undefined || g[n] === '') g[n] = Number(g[sp]) > 0 ? Math.round(1000 / Number(g[sp])) : '';
+      delete g[sp]; changed = true;
+    }
+  }
+  if ('extraDia' in g || 'extraSp' in g || 'extraExtent' in g) {
+    const dia = Number(g.extraDia); const sp = Number(g.extraSp);
+    if (dia > 0 && sp > 0 && !(g.add && (g.add.tx || g.add.ty))) {
+      const n = Math.round(1000 / sp);
+      g.add = { ...(g.add || {}), tx: { dia, n }, ty: { dia, n } };
+    }
+    delete g.extraDia; delete g.extraSp; delete g.extraExtent; changed = true;
+  }
+  if ('avgWidth' in g) { delete g.avgWidth; changed = true; }
+  if (!g.add) { g.add = {}; changed = true; }
+  if (!g.drops) { g.drops = {}; changed = true; }
+  if (g.addDiaDefault === undefined) { g.addDiaDefault = 12; changed = true; }
+  return changed ? { ...it, geometry: g } : it;
 }
 
 /** Safe file name: "TG-2401 Marina Tower_P02.tgp.json" */
@@ -5933,10 +6013,10 @@ const REQUIRED_INPUTS = {
   // v3.52.0: the bars of the base mesh and the panel type for Table (6-3).
   feslab: [
     ...CONCRETE, R('geometry.t', 'the slab thickness'), R('geometry.cover', 'the cover'),
-    R('geometry.botDiaX', 'the bottom bars in X'), R('geometry.botSpX', 'their spacing'),
-    R('geometry.botDiaY', 'the bottom bars in Y'), R('geometry.botSpY', 'their spacing'),
-    R('geometry.topDiaX', 'the top bars in X'), R('geometry.topSpX', 'their spacing'),
-    R('geometry.topDiaY', 'the top bars in Y'), R('geometry.topSpY', 'their spacing'),
+    R('geometry.botDiaX', 'the bottom bars in X'), R('geometry.botNX', 'their number per metre'),
+    R('geometry.botDiaY', 'the bottom bars in Y'), R('geometry.botNY', 'their number per metre'),
+    R('geometry.topDiaX', 'the top bars in X'), R('geometry.topNX', 'their number per metre'),
+    R('geometry.topDiaY', 'the top bars in Y'), R('geometry.topNY', 'their number per metre'),
     R('geometry.panelType', 'the panel type that governs the thickness, Table (6-3)'),
   ],
 };
@@ -6673,10 +6753,12 @@ function createFeSlabItem(patch = {}) {
   base.kind = 'feslab';
   base.geometry = {
     t: '', cover: '',
-    botDiaX: '', botSpX: '', botDiaY: '', botSpY: '',
-    topDiaX: '', topSpX: '', topDiaY: '', topSpY: '',
-    extraDia: '', extraSp: '', extraExtent: '',
-    avgWidth: '', panelType: '',
+    botDiaX: '', botNX: '', botDiaY: '', botNY: '',
+    topDiaX: '', topNX: '', topDiaY: '', topNY: '',
+    panelType: '', addDiaDefault: 12,
+    // v3.54.0: added bars per layer { bx|by|tx|ty: { dia, n } } and drop
+    // panels per column joint { lx, ly, h }, both set on the slab plan.
+    add: {}, drops: {},
   };
   base.materials = { fcu: '', fy: '' };
   base.actions = {};
@@ -10312,8 +10394,8 @@ function buildFeSlab(model, shells, forcesTable, sectionName, chosenCases) {
 //
 // v3.52.0. The slab, its mesh, its results and its supports come from the
 // SAP2000 import (modules/feslab/build.js). The engineer gives the concrete,
-// the bars and two decisions — the panel type for Table (6-3) and an optional
-// averaging width — and every check runs at every node.
+// the bars and two decisions — the panel type for Table (6-3), the meshes,
+// the bars added where the mesh is short and any drop panels — and every check runs at every node.
 
 
 const FE_SLAB_PLAN = ['fe.thickness', 'fe.flexure', 'fe.shear', 'fe.punching', 'fe.scope'];
@@ -10339,6 +10421,7 @@ function compactLayers(layers) {
   for (const [k, L] of Object.entries(layers || {})) {
     out[k] = {
       d: L.d, asMin: L.asMin, base: L.base,
+      add: L.add, addNeed: Math.round(L.addNeed), zones: L.zones,
       req: L.rows.map((r) => (Number.isFinite(r.req) ? Math.round(r.req) : -1)),
       prov: L.rows.map((r) => Math.round(r.prov)),
       u: L.rows.map((r) => (Number.isFinite(r.u) ? Math.round(r.u * 1000) / 1000 : 99)),
@@ -11862,6 +11945,18 @@ function runDesign(registry, item) {
   if (item && item.imported) {
     const drift = driftFromModel(item);
     if (drift.drifted) res = { ...res, analysisMismatch: { rows: drift.rows, source: drift.source, text: describeDrift(drift) } };
+  }
+  // v3.54.0: a drop panel added on the plan is not in the model the shell
+  // results came from; the slab is stiffer at the column and the moments move.
+  if (item && item.kind === 'feslab' && res) {
+    const drops = Object.values((item.geometry && item.geometry.drops) || {})
+      .filter((d) => d && Number(d.lx) > 0 && Number(d.ly) > 0 && Number(d.h) > 0).length;
+    if (drops) {
+      const row = { path: 'geometry.drops', was: 'none', now: `${drops} drop panel${drops === 1 ? '' : 's'}` };
+      const prev = res.analysisMismatch;
+      const text = `${prev ? `${prev.text} ` : ''}${drops} drop panel${drops === 1 ? ' has' : 's have'} been added on the punching plan; the analysis was run without ${drops === 1 ? 'it' : 'them'}. Add the drop panels to the SAP2000 model, re-run it and re-import before this is issued.`;
+      res = { ...res, analysisMismatch: { rows: [...(prev ? prev.rows : []), row], source: prev ? prev.source : 'SAP2000', text } };
+    }
   }
   // v3.46.1: decisions recorded but not accepted (no named engineer, or a
   // basis that states a conclusion without a reason) are printed on the check
@@ -16434,10 +16529,11 @@ void derived;
 // printed under that name on every line that uses it, and never under a
 // clause of the code.
 //
-// NOT A CLAUSE: AVERAGING WIDTH
-// A shell model gives a peak moment over a column that no bar arrangement
-// meets at a point. The code gives no width to spread it over. The engineer
-// sets one; left blank, nothing is averaged, which is the strict reading.
+// HOGGING AT THE COLUMN FACE (v3.54.0)
+// A shell model gives a peak moment on the column axis that no bar meets at a
+// point. The top bars are designed for the moment at the column face, the
+// critical section of §6-2-5-5(b); the averaging width of earlier versions is
+// gone.
 
 
 const ECP_FE = 'ECP 203-2020';
@@ -16486,6 +16582,13 @@ function asPerMetre(dia, spacing) {
   const d = Number(dia); const s = Number(spacing);
   return d > 0 && s > 0 ? (barArea(d) * 1000) / s : 0;
 }
+/** v3.54.0: area of n bars per metre width. */
+function asPerMetreN(dia, n) {
+  const d = Number(dia); const k = Number(n);
+  return d > 0 && k > 0 ? barArea(d) * k : 0;
+}
+/** ECP 203-2020 §6-2-1-2-3: bars not more than 200 mm apart, i.e. at least five per metre. */
+const FE_MIN_BARS_PER_M = 5;
 
 /** Steel per metre for a moment per metre, ECP 203 §4-2-1; NaN beyond (c/d)max. */
 function slabSteelFor(Mpm, d, fcu, fy) {
@@ -16514,6 +16617,31 @@ function feDepths(g) {
     // The mean depth for punching: between the two layers of the top mesh.
     mean: t - c - tx,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* drop panels (v3.54.0)                                               */
+/* ------------------------------------------------------------------ */
+
+/** The drop panels entered, by column joint: { lx, ly, h } in mm. */
+function feDrops(g) {
+  const out = {};
+  for (const [j, d] of Object.entries((g && g.drops) || {})) {
+    const lx = Number(d && d.lx) || 0; const ly = Number(d && d.ly) || 0; const h = Number(d && d.h) || 0;
+    if (lx > 0 && ly > 0 && h > 0) out[j] = { lx, ly, h };
+  }
+  return out;
+}
+
+/** The drop under a plan point, if any. */
+function dropAt(fe, drops, x, y) {
+  for (const s of columnStacks(fe)) {
+    const dp = drops[s.joint];
+    if (!dp) continue;
+    const c = fe.nodes[s.node];
+    if (Math.abs(x - c.x) <= dp.lx / 2 + 1e-6 && Math.abs(y - c.y) <= dp.ly / 2 + 1e-6) return { ...dp, joint: s.joint };
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -16593,33 +16721,56 @@ function columnSpans(fe) {
 /* ------------------------------------------------------------------ */
 
 /**
- * The moving average across the bars' width: for bars in X, the value at a
- * node is the mean over the nodes within `w/2` of it in Y on the same line of
- * X (within half a mesh). w = 0 returns the values as they are.
+ * v3.54.0: the hogging moment over a column taken at the column face.
+ *
+ * ECP 203-2020 §6-2-5-5(b) puts the critical section for the hogging moment
+ * of a flat slab around the perimeter of the column (or its head). The shell
+ * analysis peaks on the column axis, where no section is critical. So at the
+ * joints inside a column's plan, the top-bar moment is replaced by its value
+ * at the column face, interpolated linearly along the bars between the joint
+ * and the next joint beyond the face, the larger of the two faces. Joints
+ * outside every column keep their own value. §6-2-5-5(b) is written for the
+ * empirical method; applying it to the moments of an elastic analysis is the
+ * engineer's decision, recorded as such.
  */
-function averageAcross(fe, values, along, w) {
-  if (!(w > 0)) return values.slice();
+function faceMoments(fe, values, along) {
   const N = fe.nodes;
-  const half = (fe.meshSize || 0) / 2 + 1e-6;
-  const order = N.map((_, i) => i).sort((a, b) => N[a][along] - N[b][along]);
-  const key = order.map((i) => N[i][along]);
+  const out = values.slice();
   const across = along === 'x' ? 'y' : 'x';
-  const out = new Array(N.length);
-  const lowerBound = (v) => { let lo = 0; let hi = key.length; while (lo < hi) { const m = (lo + hi) >> 1; if (key[m] < v) lo = m + 1; else hi = m; } return lo; };
-  for (let i = 0; i < N.length; i += 1) {
-    const p = N[i];
-    let sum = 0; let n = 0;
-    for (let k = lowerBound(p[along] - half); k < key.length && key[k] <= p[along] + half; k += 1) {
-      const q = N[order[k]];
-      if (Math.abs(q[across] - p[across]) <= w / 2 + 1e-6) { sum += values[order[k]]; n += 1; }
+  const half = (fe.meshSize || 0) / 2 + 1e-6;
+  const faces = [];
+  for (const s of columnStacks(fe)) {
+    const c = N[s.node];
+    const hw = (along === 'x' ? s.cx : s.cy) / 2;      // half the column along the bars
+    const hc = (along === 'x' ? s.cy : s.cx) / 2;
+    for (let i = 0; i < N.length; i += 1) {
+      const p = N[i];
+      if (Math.abs(p[along] - c[along]) > hw + 1e-6 || Math.abs(p[across] - c[across]) > hc + 1e-6) continue;
+      let best = -Infinity; let used = null;
+      for (const sign of [-1, 1]) {
+        const xf = c[along] + sign * hw;
+        // The nearest joint beyond the face on the same line.
+        let q = null;
+        for (let k = 0; k < N.length; k += 1) {
+          const r = N[k];
+          if (Math.abs(r[across] - p[across]) > half) continue;
+          if (sign < 0 ? !(r[along] < xf - 1e-6) : !(r[along] > xf + 1e-6)) continue;
+          if (!q || Math.abs(r[along] - xf) < Math.abs(N[q][along] - xf)) q = k;
+        }
+        if (q === null) continue;
+        const x0 = p[along]; const x1 = N[q][along];
+        const v = Math.abs(x1 - x0) > 1e-9 ? values[i] + (values[q] - values[i]) * (xf - x0) / (x1 - x0) : values[i];
+        if (v > best) { best = v; used = { q, xf }; }
+      }
+      if (used) { out[i] = Math.max(0, best); faces.push({ node: i, joint: s.joint, at: used.xf, from: values[i], to: out[i] }); }
     }
-    out[i] = n ? sum / n : values[i];
   }
+  out.faces = faces;
   return out;
 }
 
-/** The Wood–Armer moments of every node, every combination, factored. */
-function feDesignMoments(fe, factor, w) {
+/** The Wood–Armer moments of every node, every combination, factored; top moments at the column faces. */
+function feDesignMoments(fe, factor) {
   const out = {};
   for (const combo of fe.combos || Object.keys(fe.results || {})) {
     const R = fe.results[combo];
@@ -16630,32 +16781,54 @@ function feDesignMoments(fe, factor, w) {
       const wa = woodArmer(R.Mx[i] * factor, R.My[i] * factor, R.Mxy[i] * factor);
       bx[i] = wa.bx; by[i] = wa.by; tx[i] = wa.tx; ty[i] = wa.ty;
     }
-    out[combo] = {
-      bx: averageAcross(fe, bx, 'x', w), by: averageAcross(fe, by, 'y', w),
-      tx: averageAcross(fe, tx, 'x', w), ty: averageAcross(fe, ty, 'y', w),
-    };
+    out[combo] = { bx, by, tx: faceMoments(fe, tx, 'x'), ty: faceMoments(fe, ty, 'y') };
   }
   return out;
 }
 
 const FE_LAYERS = [
-  { key: 'bx', face: 'bottom', dir: 'X', label: 'Bottom bars in X', dia: 'botDiaX', sp: 'botSpX', depth: 'bx' },
-  { key: 'by', face: 'bottom', dir: 'Y', label: 'Bottom bars in Y', dia: 'botDiaY', sp: 'botSpY', depth: 'by' },
-  { key: 'tx', face: 'top', dir: 'X', label: 'Top bars in X', dia: 'topDiaX', sp: 'topSpX', depth: 'tx' },
-  { key: 'ty', face: 'top', dir: 'Y', label: 'Top bars in Y', dia: 'topDiaY', sp: 'topSpY', depth: 'ty' },
+  { key: 'bx', face: 'bottom', dir: 'X', label: 'Bottom bars in X', dia: 'botDiaX', n: 'botNX', depth: 'bx' },
+  { key: 'by', face: 'bottom', dir: 'Y', label: 'Bottom bars in Y', dia: 'botDiaY', n: 'botNY', depth: 'by' },
+  { key: 'tx', face: 'top', dir: 'X', label: 'Top bars in X', dia: 'topDiaX', n: 'topNX', depth: 'tx' },
+  { key: 'ty', face: 'top', dir: 'Y', label: 'Top bars in Y', dia: 'topDiaY', n: 'topNY', depth: 'ty' },
 ];
 
-/** Additional top bars over the columns, where given. */
-function extraTopAt(fe, g, i) {
-  const As = asPerMetre(g.extraDia, g.extraSp);
-  const E = Number(g.extraExtent) || 0;
-  if (!(As > 0) || !(E > 0)) return 0;
-  const p = fe.nodes[i];
-  for (const s of columnStacks(fe)) {
-    const c = fe.nodes[s.node];
-    if (Math.abs(p.x - c.x) <= E + 1e-6 && Math.abs(p.y - c.y) <= E + 1e-6) return As;
+/** The bars added in one layer, { dia, n }, where given. */
+function feAdd(g, key) {
+  const a = ((g && g.add) || {})[key] || {};
+  const dia = Number(a.dia) || 0; const n = Number(a.n) || 0;
+  return { dia, n, As: asPerMetreN(dia, n) };
+}
+
+/**
+ * v3.54.0: where a layer needs more than its mesh. The joints whose required
+ * steel exceeds the mesh are joined through the elements they share, and each
+ * group is one zone, its extent the rectangle around it. Added bars of a
+ * layer are counted inside its zones and nowhere else.
+ */
+function feAddZones(fe, needs) {
+  const N = fe.nodes.length;
+  const parent = Array.from({ length: N }, (_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (const e of fe.elems) {
+    const ks = e.n.filter((i) => needs[i]);
+    for (let k = 1; k < ks.length; k += 1) parent[find(ks[k])] = find(ks[0]);
   }
-  return 0;
+  const groups = new Map();
+  for (let i = 0; i < N; i += 1) {
+    if (!needs[i]) continue;
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(i);
+  }
+  return [...groups.values()].map((ids) => {
+    const xs = ids.map((i) => fe.nodes[i].x); const ys = ids.map((i) => fe.nodes[i].y);
+    return { x1: Math.min(...xs), x2: Math.max(...xs), y1: Math.min(...ys), y2: Math.max(...ys), joints: ids.length };
+  });
+}
+
+function inZone(zones, p) {
+  return zones.some((z) => p.x >= z.x1 - 1e-6 && p.x <= z.x2 + 1e-6 && p.y >= z.y1 - 1e-6 && p.y <= z.y2 + 1e-6);
 }
 
 /**
@@ -16663,22 +16836,52 @@ function extraTopAt(fe, g, i) {
  * Returns the per-node records the map draws and the check reads.
  */
 function feLayerDesign(fe, g, mat, moments, layer) {
-  const dd = feDepths(g)[layer.depth];
+  const dBase = feDepths(g)[layer.depth];
+  const drops = feDrops(g);
   const t = Number(g.t) || 0;
   const asMin = (ECP203_FESLAB_DATA.asMinRatio.value / (Number(mat.fy) || 400)) * 1000 * t;
-  const base = asPerMetre(g[layer.dia], g[layer.sp]);
+  const base = asPerMetreN(g[layer.dia], g[layer.n]);
+  const add = feAdd(g, layer.key);
   const n = fe.nodes.length;
   const rows = new Array(n);
   for (let i = 0; i < n; i += 1) {
     let M = 0; let combo = null;
     for (const [c, m] of Object.entries(moments)) { if (m[layer.key][i] > M) { M = m[layer.key][i]; combo = c; } }
     const Mpm = M * 1000;                                  // per metre width
+    // Over a drop panel the top bars have the drop's depth as well.
+    const p = fe.nodes[i];
+    const dp = layer.face === 'top' ? dropAt(fe, drops, p.x, p.y) : null;
+    const dd = dBase + (dp ? dp.h : 0);
     const r = slabSteelFor(Mpm, dd, mat.fcu, mat.fy);
     const req = !r.ok ? NaN : (Mpm > 0 ? Math.max(r.As, asMin) : 0);
-    const prov = base + (layer.face === 'top' ? extraTopAt(fe, g, i) : 0);
-    rows[i] = { M: Mpm, combo, req, prov, base, u: !Number.isFinite(req) ? Infinity : (req > 0 ? (prov > 0 ? req / prov : Infinity) : 0) };
+    rows[i] = { M: Mpm, combo, req, base, d: dd, drop: !!dp };
   }
-  return { d: dd, asMin, base, rows };
+  const needs = rows.map((r) => !Number.isFinite(r.req) || r.req > base + 1e-9);
+  const zones = feAddZones(fe, needs);
+  let addNeed = 0;
+  for (let i = 0; i < n; i += 1) {
+    const r = rows[i];
+    if (Number.isFinite(r.req)) addNeed = Math.max(addNeed, r.req - base);
+    r.prov = base + (add.As > 0 && inZone(zones, fe.nodes[i]) ? add.As : 0);
+    r.u = !Number.isFinite(r.req) ? Infinity : (r.req > 0 ? (r.prov > 0 ? r.req / r.prov : Infinity) : 0);
+  }
+  return { d: dBase, asMin, base, add, addNeed: Math.max(0, addNeed), zones, rows };
+}
+
+/**
+ * v3.54.0: the bars to add in one layer for a chosen diameter. The number per
+ * metre is the mesh's own number, or half of it, one and a half times or twice
+ * it — the first that covers the steel needed — so the added bars sit between
+ * or beside the mesh bars at a regular spacing.
+ */
+function feSuggestAdd(meshN, dia, need) {
+  const A = Math.PI * Number(dia) * Number(dia) / 4;
+  if (!(A > 0) || !(need > 0)) return null;
+  for (const mult of [0.5, 1, 1.5, 2]) {
+    const n = Number(meshN) * mult;
+    if (n > 0 && n * A >= need - 1e-6) return { n, mult, As: n * A };
+  }
+  return { n: Number(meshN) * 2, mult: 2, As: Number(meshN) * 2 * A, short: true };
 }
 
 /* ------------------------------------------------------------------ */
@@ -16688,21 +16891,14 @@ function feLayerDesign(fe, g, mat, moments, layer) {
 function feFmt(x, dp = 0) { return Number.isFinite(x) ? x.toFixed(dp) : '—'; }
 function feAt(fe, i) { const p = fe.nodes[i]; return `joint ${p.id} (x = ${feFmt(p.x / 1000, 2)} m, y = ${feFmt(p.y / 1000, 2)} m)`; }
 
-/** 6-2-5-2: thickness and column size. */
-function ecp203_feThickness(ctx) {
-  const { fe, geometry: g, mat } = ctx;
-  const t = Number(g.t) || 0;
-  const stacks = columnStacks(fe);
+/**
+ * v3.54.0: the least thickness of Table (6-3), for the screen to fill in and
+ * hold. Null when no span between columns on a line can be measured.
+ */
+function feThicknessMin(fe, g, fy) {
+  if (!fe || !fe.nodes) return null;
   const spans = columnSpans(fe);
-  const steps = []; const checks = [];
-  if (!spans.length) {
-    checks.push(check({
-      id: 'fe.thickness', title: 'Thickness of the flat slab', code: ECP_FE, clause: '6-2-5-2',
-      clauseTitle: 'Limits on the concrete dimensions', status: CHECK_STATUS.NOT_APPLICABLE,
-      note: 'Fewer than two columns on a line were found under the slab, so no span between columns can be measured for Table (6-3).',
-    }));
-    return { steps, checks, scratch: {} };
-  }
+  if (!spans.length) return null;
   const gov = spans.reduce((a, s) => {
     const cdim = s.dir === 'x' ? Math.max(s.from.cx, s.to.cx) : Math.max(s.from.cy, s.to.cy);
     const Ln = s.L - cdim;
@@ -16710,15 +16906,40 @@ function ecp203_feThickness(ctx) {
   }, null);
   const panel = g.panelType === 'interior' ? 'interior' : 'exterior';
   const edgeBeam = g.panelType === 'exteriorEdge';
-  const { denom, band } = fs_thicknessDenominator({ fy: Number(mat.fy) || 0, drops: false, panel, edgeBeam });
-  const tMin = gov.Ln / denom;
+  // Drop panels count for the table only where every column the slab sits on
+  // without beams has one; a slab with drops at some columns is not a slab
+  // "with drop panels" for the purpose of Table (6-3).
+  const drops = feDrops(g);
+  const free = columnStacks(fe).filter((x) => !x.beams.length);
+  const withDrops = free.length > 0 && free.every((x) => drops[x.joint]);
+  const { denom, band } = fs_thicknessDenominator({ fy: Number(fy) || 0, drops: withDrops, panel, edgeBeam });
+  return { tMin: gov.Ln / denom, gov, denom, band, panel, edgeBeam, withDrops };
+}
+
+/** 6-2-5-2: thickness and column size. */
+function ecp203_feThickness(ctx) {
+  const { fe, geometry: g, mat } = ctx;
+  const t = Number(g.t) || 0;
+  const stacks = columnStacks(fe);
+  const spans = columnSpans(fe);
+  const steps = []; const checks = [];
+  const T = feThicknessMin(fe, g, mat.fy);
+  if (!T) {
+    checks.push(check({
+      id: 'fe.thickness', title: 'Thickness of the flat slab', code: ECP_FE, clause: '6-2-5-2',
+      clauseTitle: 'Limits on the concrete dimensions', status: CHECK_STATUS.NOT_APPLICABLE,
+      note: 'Fewer than two columns on a line were found under the slab, so no span between columns can be measured for Table (6-3).',
+    }));
+    return { steps, checks, scratch: {} };
+  }
+  const { gov, denom, band, panel, edgeBeam, withDrops, tMin } = T;
   steps.push(step({
     code: ECP_FE, clause: '6-2-5-2', symbol: 't_min',
-    description: 'Least thickness of a flat slab without drop panels',
+    description: `Least thickness of a flat slab ${withDrops ? 'with' : 'without'} drop panels`,
     expression: '§6-2-5-2(a), Table (6-3): t ≥ L_n/k; L_n the longest clear span between column faces',
-    substitution: `longest span ${feFmt(gov.L / 1000, 2)} m in ${gov.dir.toUpperCase()} (columns ${gov.from.frames[0]} and ${gov.to.frames[0]}), less the column ${feFmt(gov.cdim)} mm → L_n = ${feFmt(gov.Ln)} mm; f_y in the ${band} band, ${panel === 'interior' ? 'interior panel' : edgeBeam ? 'exterior panel with an edge beam' : 'exterior panel without an edge beam'} → k = ${denom} → t_min = ${feFmt(tMin)} mm`,
+    substitution: `longest span ${feFmt(gov.L / 1000, 2)} m in ${gov.dir.toUpperCase()} (columns ${gov.from.frames[0]} and ${gov.to.frames[0]}), less the column ${feFmt(gov.cdim)} mm → L_n = ${feFmt(gov.Ln)} mm; f_y in the ${band} band, ${panel === 'interior' ? 'interior panel' : edgeBeam ? 'exterior panel with an edge beam' : 'exterior panel without an edge beam'}${withDrops ? ', drop panels at every column' : ''} → k = ${denom} → t_min = ${feFmt(tMin)} mm`,
     value: tMin, dimension: 'length',
-    note: 'The panel type is the engineer\'s choice. An edge beam counts only where its depth is at least three times the slab thickness (footnote to Table 6-3).',
+    note: 'The panel type is the engineer\'s choice. An edge beam counts only where its depth is at least three times the slab thickness (footnote to Table 6-3). The screen fills the thickness with this least value and does not accept less.',
   }));
   checks.push(check({
     id: 'fe.thickness', title: 'Thickness of the flat slab', code: ECP_FE, clause: '6-2-5-2',
@@ -16759,10 +16980,9 @@ function ecp203_feThickness(ctx) {
 }
 
 /** Bending reinforcement, every node, Wood–Armer moments. */
-function ecp203_feFlexure(ctx, scratch = {}) {
+function ecp203_feFlexure(ctx) {
   const { fe, geometry: g, mat, factor } = ctx;
-  const w = Number(g.avgWidth) || 0;
-  const moments = feDesignMoments(fe, factor, w);
+  const moments = feDesignMoments(fe, factor);
   const steps = []; const checks = []; const layers = {};
   const fy = Number(mat.fy) || 0;
   steps.push(derived({
@@ -16772,23 +16992,25 @@ function ecp203_feFlexure(ctx, scratch = {}) {
     substitution: `at every one of ${fe.nodes.length} joints, for each of ${Object.keys(moments).join(', ')}, the moments multiplied by the load factor ${factor}`,
     note: `${WA_SOURCE}. NOT a clause of ECP 203-2020, which gives no rule for the twisting moment of a plate; this is the rule in general use for bars laid in two perpendicular directions.`,
   }));
-  steps.push(derived({
-    symbol: 'w_avg',
-    description: 'Width over which the design moment is averaged, across the bars',
-    expression: w > 0 ? `the mean over the joints within ${feFmt(w)} mm across the bars, on the same line` : 'none — every joint is designed for its own value',
-    substitution: w > 0 ? `w = ${feFmt(w)} mm` : 'w = 0',
-    value: w, dimension: 'length',
-    note: 'An engineering decision, not a clause: ECP 203-2020 gives no averaging width for a peak over a column. Left blank, nothing is averaged, which is the strict reading.',
+  const anyCombo = Object.values(moments)[0];
+  const facesX = anyCombo ? anyCombo.tx.faces.length : 0;
+  steps.push(step({
+    code: ECP_FE, clause: '6-2-5-5', symbol: 'M*_top at the face',
+    description: 'Hogging moment over a column taken at the column face',
+    expression: '§6-2-5-5(b): the critical section for the hogging moment is around the perimeter of the column; at the joints inside a column the top-bar moment is the value at the face, interpolated linearly along the bars to the next joint beyond it',
+    substitution: `${facesX} joint${facesX === 1 ? '' : 's'} inside the columns, top bars in X and in Y each at the face in its own direction`,
+    note: 'Clause 6-2-5-5(b) is written for the empirical method; taking its critical section for the moments of an elastic analysis is an engineering decision, recorded here as such. The shell peak on the column axis is not designed for.',
   }));
   const asMin = (ECP203_FESLAB_DATA.asMinRatio.value / (fy || 400)) * 1000 * (Number(g.t) || 0);
   steps.push(step({
     code: ECP_FE, clause: '6-2-1-2-3', symbol: 'A_s,min',
-    description: 'Least reinforcement per metre wherever a face needs bars',
+    description: 'Least reinforcement per metre',
     expression: '§6-2-1-2-3(1): not less than 0,6/f_y of the concrete section',
     substitution: `0,6/${fy} × 1000 × ${feFmt(Number(g.t))} = ${feFmt(asMin)} mm²/m`,
     value: asMin, dimension: 'area', verify: true,
     note: '6-2-5 gives no minimum of its own for a flat slab; 6-2-5-1 counts a flat slab among the solid slabs, and this is the solid-slab minimum.',
   }));
+  const meshProblems = [];
   for (const L of FE_LAYERS) {
     const r = feLayerDesign(fe, g, mat, moments, L);
     layers[L.key] = r;
@@ -16802,30 +17024,22 @@ function ecp203_feFlexure(ctx, scratch = {}) {
     }
     const G = r.rows[gi];
     const tooThin = r.rows.some((x) => !Number.isFinite(x.req));
-    // Where the top needs more than the base mesh: how far from a column.
-    let reach = 0;
-    if (L.face === 'top') {
-      const stacks = columnStacks(fe);
-      for (let i = 0; i < r.rows.length; i += 1) {
-        if (!(r.rows[i].req > r.base + 1e-9)) continue;
-        const p = fe.nodes[i];
-        let dmin = Infinity;
-        for (const s of stacks) { const c = fe.nodes[s.node]; dmin = Math.min(dmin, Math.max(Math.abs(p.x - c.x), Math.abs(p.y - c.y))); }
-        if (dmin < Infinity) reach = Math.max(reach, dmin);
-      }
-    }
+    const nMesh = Number(g[L.n]) || 0;
     const lsteps = [
       step({
         code: ECP_FE, clause: '4-2-1', symbol: `A_s,${L.key}`,
         description: `${L.label}: steel per metre at the joint that governs`,
         expression: 'rectangular stress block 0,67 f_cu/γ_c over a, b = 1000 mm: M = 0,67 (f_cu/γ_c) b a (d − a/2), A_s = 0,67 (f_cu/γ_c) b a/(f_y/γ_s), a ≤ 0,8 (c/d)max d, Table (4-1)',
-        substitution: G ? `${feAt(fe, gi)}, ${G.combo || '—'}: M* = ${feFmt(G.M / 1e6, 2)} kN·m/m, d = ${feFmt(r.d)} mm → A_s,req = ${Number.isFinite(G.req) ? feFmt(G.req) : 'beyond (c/d)max'} mm²/m; provided ${feFmt(G.prov)} mm²/m (Ø${g[L.dia]} at ${g[L.sp]}${G.prov > G.base + 1e-6 ? ' and the bars added over the columns' : ''})` : '—',
+        substitution: G ? `${feAt(fe, gi)}, ${G.combo || '—'}: M* = ${feFmt(G.M / 1e6, 2)} kN·m/m, d = ${feFmt(G.d)} mm${G.drop ? ' (over a drop panel)' : ''} → A_s,req = ${Number.isFinite(G.req) ? feFmt(G.req) : 'beyond (c/d)max'} mm²/m; provided ${feFmt(G.prov)} mm²/m (mesh ${nMesh} Ø${g[L.dia]} per metre${G.prov > G.base + 1e-6 ? ` and added ${r.add.n} Ø${r.add.dia} per metre` : ''})` : '—',
         value: G ? G.req : null, dimension: 'area',
       }),
     ];
     const notes = [];
     notes.push(`${needs} of ${r.rows.length} joints need ${L.face} bars in ${L.dir}; ${over} are not covered by the bars provided.`);
-    if (L.face === 'top' && reach > 0) notes.push(`More than the base mesh is needed up to ${feFmt(reach)} mm from a column centre${Number(g.extraExtent) > 0 ? `; the added bars reach ${feFmt(Number(g.extraExtent))} mm` : '; no added bars are given'}.`);
+    if (r.zones.length) {
+      notes.push(`More than the mesh is needed in ${r.zones.length} zone${r.zones.length === 1 ? '' : 's'}: ${r.zones.slice(0, 6).map((z) => `x ${feFmt(z.x1 / 1000, 2)}–${feFmt(z.x2 / 1000, 2)} m, y ${feFmt(z.y1 / 1000, 2)}–${feFmt(z.y2 / 1000, 2)} m`).join('; ')}${r.zones.length > 6 ? ' …' : ''}; at most ${feFmt(r.addNeed)} mm²/m beyond the mesh.`);
+      notes.push(r.add.As > 0 ? `Added: ${r.add.n} Ø${r.add.dia} per metre (${feFmt(r.add.As)} mm²/m) inside those zones.` : 'No added bars are given for this layer.');
+    }
     if (tooThin) notes.push('At one or more joints the moment is beyond what the section can carry under (c/d)max without compression steel: the slab is too thin there, or needs a drop panel.');
     checks.push(check({
       id: `fe.flexure.${L.key}`, title: L.label, code: ECP_FE, clause: '4-2-1',
@@ -16833,26 +17047,36 @@ function ecp203_feFlexure(ctx, scratch = {}) {
       demand: G ? G.req : null, capacity: G ? G.prov : null, dimension: 'area',
       utilisation: Number.isFinite(gu) ? gu : Infinity,
       status: tooThin ? CHECK_STATUS.FAIL : (gu <= 1 + 1e-9 ? CHECK_STATUS.PASS : CHECK_STATUS.FAIL),
-      failureMode: `Flexure — ${L.face} bars in ${L.dir} short of the Wood–Armer moment`,
+      failureMode: `Flexure — ${L.face} bars in ${L.dir} short of the Wood–Armer moment${r.zones.length && !(r.add.As > 0) ? '; add bars in this layer' : ''}`,
       steps: lsteps, note: notes.join(' '),
     }));
     steps.push(...lsteps);
+    if (r.base + 1e-6 < asMin) meshProblems.push(`${L.label}: ${nMesh} Ø${g[L.dia]} per metre = ${feFmt(r.base)} mm²/m, below ${feFmt(asMin)} mm²/m — increase the bars`);
   }
-  // Bar spacing, 6-2-1-2-3.
-  const sMax = ECP203_FESLAB_DATA.barSpacingMax.value;
-  const sp = FE_LAYERS.map((L) => Number(g[L.sp]) || 0).concat(Number(g.extraSp) > 0 ? [Number(g.extraSp)] : []);
-  const worstSp = Math.max(...sp);
-  const spStep = step({
-    code: ECP_FE, clause: '6-2-1-2-3', symbol: 's_max', description: 'Greatest spacing of the bars',
-    expression: '§6-2-1-2-3: not more than 200 mm', substitution: `largest spacing given ${feFmt(worstSp)} mm against ${sMax} mm`,
-    value: sMax, dimension: 'length', verify: true,
+  // 6-2-1-2-3: least steel in every mesh, and at least five bars per metre.
+  const mStep = step({
+    code: ECP_FE, clause: '6-2-1-2-3', symbol: 'mesh',
+    description: 'Each mesh against the least steel and the greatest spacing',
+    expression: '§6-2-1-2-3: A_s ≥ 0,6/f_y of the concrete section, and bars not more than 200 mm apart — at least five per metre',
+    substitution: FE_LAYERS.map((L) => `${L.label}: ${Number(g[L.n]) || 0} Ø${g[L.dia]}/m = ${feFmt(layers[L.key].base)} mm²/m`).join('; '),
+    value: asMin, dimension: 'area', verify: true,
   });
+  steps.push(mStep);
+  const counts = FE_LAYERS.map((L) => Number(g[L.n]) || 0)
+    .concat(FE_LAYERS.map((L) => feAdd(g, L.key)).filter((a) => a.n > 0).map((a) => a.n));
+  const fewest = Math.min(...counts);
+  for (const L of FE_LAYERS) { const n = Number(g[L.n]) || 0; if (n < FE_MIN_BARS_PER_M) meshProblems.push(`${L.label}: ${n} per metre, fewer than ${FE_MIN_BARS_PER_M}`); }
+  const minMesh = Math.min(...FE_LAYERS.map((L) => layers[L.key].base));
   checks.push(check({
-    id: 'fe.spacing', title: 'Spacing of the bars', code: ECP_FE, clause: '6-2-1-2-3',
-    clauseTitle: 'Reinforcement of solid slabs', demand: worstSp, capacity: sMax, dimension: 'length',
-    failureMode: 'Bars too far apart to control cracking', steps: [spStep],
+    id: 'fe.mesh', title: 'Meshes: least steel and five bars per metre', code: ECP_FE, clause: '6-2-1-2-3',
+    clauseTitle: 'Reinforcement of solid slabs',
+    demand: asMin, capacity: minMesh, dimension: 'area',
+    utilisation: Math.max(minMesh > 0 ? asMin / minMesh : Infinity, fewest > 0 ? FE_MIN_BARS_PER_M / fewest : Infinity),
+    status: meshProblems.length ? CHECK_STATUS.FAIL : CHECK_STATUS.PASS,
+    failureMode: 'Too little steel, or bars too far apart, in a mesh',
+    steps: [mStep],
+    note: meshProblems.length ? `Not satisfied: ${meshProblems.join('; ')}.` : 'Every mesh carries at least the least steel, at five bars per metre or more.',
   }));
-  steps.push(spStep);
   return { steps, checks, scratch: { feLayers: layers } };
 }
 
@@ -16918,18 +17142,139 @@ function ecp203_feShear(ctx) {
   };
 }
 
+/**
+ * Punching on one critical section: the column itself, or the edge of a drop
+ * panel (v3.54.0), taken as a loaded area of cx × cy with depth d.
+ */
+function punchSection(fe, s, cx, cy, d, factor, where) {
+  const K = ECP203_FESLAB_DATA;
+  const pos = columnPosition(fe, { node: s.node, cx, cy }, d);
+  const combos = new Set([...(s.below ? Object.keys(s.below.forces) : []), ...(s.above ? Object.keys(s.above.forces) : [])]);
+  let gov = null;
+  for (const combo of combos) {
+    const fb = s.below && s.below.forces[combo];
+    const fa = s.above && s.above.forces[combo];
+    const Q = factor * Math.max(0, Math.abs(fb ? Math.min(0, fb.P) : 0) - Math.abs(fa ? Math.min(0, fa.P) : 0));
+    const Mfx = factor * (Math.abs(fb ? fb.Mx : 0) + Math.abs(fa ? fa.Mx : 0));
+    const Mfy = factor * (Math.abs(fb ? fb.My : 0) + Math.abs(fa ? fa.My : 0));
+    let r = null;
+    if (pos.position === 'interior') {
+      const b0 = 2 * (cx + d) + 2 * (cy + d);
+      const q0 = Q / (b0 * d);
+      const part = (c1, c2, M) => {
+        const gf = 1 / (1 + (2 / 3) * Math.sqrt((c1 + d) / (c2 + d)));
+        const J = (d * (c1 + d) ** 3) / 6 + (d ** 3 * (c1 + d)) / 6 + (d * (c1 + d) ** 2 * (c2 + d)) / 2;
+        const C = (c1 + d) / 2;
+        return { gf, gq: 1 - gf, J, C, q: (M * (1 - gf) * C) / J };
+      };
+      const ay = part(cx, cy, Mfy);
+      const ax = part(cy, cx, Mfx);
+      r = { method: 'full', b0, Q, q0, Mfx, Mfy, ax, ay, q: q0 + ax.q + ay.q };
+    } else if (pos.position === 'edge' || pos.position === 'corner') {
+      const openX = pos.open.E || pos.open.W;
+      const b0 = pos.position === 'edge'
+        ? (openX ? 2 * (cx + d / 2) + (cy + d) : 2 * (cy + d / 2) + (cx + d))
+        : (cx + d / 2) + (cy + d / 2);
+      const beta = K.beta[pos.position];
+      r = { method: 'simplified', b0, Q, beta, q: (Q * beta) / (b0 * d) };
+    }
+    if (r && (!gov || r.q > gov.q)) gov = { ...r, combo };
+  }
+  if (!gov) return { none: pos.position === 'other' ? 'other' : 'forces', pos };
+  const root = Math.sqrt(fe.__fcu / ECP203_DATA.gammaC.value);
+  const alpha = K.alpha[pos.position];
+  const aOverB = Math.min(cx, cy) / Math.max(cx, cy);
+  const qA = 0.8 * ((alpha * d) / gov.b0 + 0.2) * root;
+  const qB = 0.316 * (0.5 + aOverB) * root;
+  const qC = Math.min(0.316 * root, K.qcupCap.value);
+  const qcup = Math.min(qA, qB, qC);
+  const n0 = fe.nodes[s.node];
+  const cs = [
+    step({
+      code: ECP_FE, clause: '4-2-2-3', symbol: `b_o (${where})`,
+      description: `Critical section at d/2 from ${where === 'column' ? 'the column faces' : 'the edge of the drop panel'} — ${pos.position}`,
+      expression: '§4-2-2-3(2)(a), Figure (4-13): at d/2 from the perimeter of the loaded area, and from where the slab thickness changes at a drop panel',
+      substitution: `${where === 'column' ? 'column' : 'drop'} ${feFmt(cx)} × ${feFmt(cy)} mm at x = ${feFmt(n0.x / 1000, 2)} m, y = ${feFmt(n0.y / 1000, 2)} m, d = ${feFmt(d)} mm → b_o = ${feFmt(gov.b0)} mm`,
+      value: gov.b0, dimension: 'length',
+    }),
+  ];
+  if (gov.method === 'full') {
+    cs.push(step({
+      code: ECP_FE, clause: '4-2-2-3', symbol: `q_up (${where})`, description: 'Punching stress from the shear the slab passes to the column',
+      expression: 'q_up = Q_up/(b_o d)   Eq. (4-44)',
+      substitution: `${gov.combo}: Q_up = ${feFmt(gov.Q / 1e3)} kN (column force below${s.above ? ' less the column above' : ''}, × ${factor}) → ${feFmt(gov.q0, 3)} N/mm²`,
+      value: gov.q0, dimension: 'stress',
+      note: where === 'drop' ? 'The load on the slab inside the drop panel is not deducted from Q, which is conservative.' : null,
+    }));
+    cs.push(step({
+      code: ECP_FE, clause: '6-2-5-7-1', symbol: `γ_q (${where})`,
+      description: 'Share of the transferred moment carried by eccentric shear',
+      expression: 'γ_f = 1/(1 + (2/3)√(b₁/b₂))   Eq. (6-20);  γ_q = 1 − γ_f   Eq. (6-21)',
+      substitution: `about Y: b₁/b₂ = ${feFmt(cx + d)}/${feFmt(cy + d)} → γ_q = ${feFmt(gov.ay.gq, 3)}; about X: ${feFmt(cy + d)}/${feFmt(cx + d)} → γ_q = ${feFmt(gov.ax.gq, 3)}`,
+      value: gov.ay.gq,
+    }));
+    cs.push(step({
+      code: ECP_FE, clause: '6-2-5-7-1', symbol: `q_M (${where})`,
+      description: 'Punching stress from the moments transferred to the column',
+      expression: 'q = M_f γ_q C/J   Eq. (6-22); J = d(c₁+d)³/6 + d³(c₁+d)/6 + d(c₁+d)²(c₂+d)/2   Eq. (6-23); C = (c₁+d)/2',
+      substitution: `M_f about Y = ${feFmt(gov.Mfy / 1e6, 1)} kN·m, J = ${(gov.ay.J / 1e9).toFixed(3)}×10⁹ mm⁴ → ${feFmt(gov.ay.q, 3)}; about X = ${feFmt(gov.Mfx / 1e6, 1)} kN·m → ${feFmt(gov.ax.q, 3)} N/mm² (column moments at the slab, above and below added)`,
+      value: gov.ay.q + gov.ax.q, dimension: 'stress',
+      note: 'The two moments are taken as acting together and their stresses added to the direct stress at the same corner, which is the upper bound.',
+    }));
+  } else {
+    cs.push(step({
+      code: ECP_FE, clause: '6-2-5-7-3', symbol: `q (${where})`,
+      description: 'Punching stress including the moment transfer, simplified method',
+      expression: 'q = Q β/(b_o d)   Eq. (6-25); β = 1,15 interior, 1,30 edge, 1,50 corner',
+      substitution: `${gov.combo}: Q = ${feFmt(gov.Q / 1e3)} kN, β = ${gov.beta} → q = ${feFmt(gov.q, 3)} N/mm²`,
+      value: gov.q, dimension: 'stress',
+      note: 'Used at edge and corner columns: ECP 203-2020 gives J for an interior column and for one direction of an edge column only, so the method the code offers for every column is used.',
+    }));
+  }
+  cs.push(step({
+    code: ECP_FE, clause: '4-2-2-3', symbol: `q_cup (${where})`,
+    description: 'Punching strength of the concrete alone, the least of three',
+    expression: '0,8(α d/b_o + 0,2)√(f_cu/γ_c) (4-46-a); 0,316(0,5 + a/b)√(f_cu/γ_c) (4-46-b); 0,316√(f_cu/γ_c) ≤ 1,70 N/mm² (4-46-c)',
+    substitution: `α = ${alpha} → ${feFmt(qA, 3)} · ${feFmt(qB, 3)} · ${feFmt(qC, 3)} → ${feFmt(qcup, 3)} N/mm²`,
+    value: qcup, dimension: 'stress',
+  }));
+  return { gov, qcup, pos, steps: cs, u: qcup > 0 ? gov.q / qcup : Infinity };
+}
+
+/**
+ * Drop panel dimensions, ECP 203-2020 §6-2-5-2(د): thickness below the slab
+ * not less than a quarter of the slab; extending from the column centre not
+ * less than a sixth of the longer panel in that direction, and not more than
+ * a quarter of the shorter panel.
+ */
+function dropRules(fe, s, dp, t) {
+  const spans = columnSpans(fe).filter((sp) => sp.from === s || sp.to === s);
+  const out = [];
+  if (dp.h < t / 4 - 1e-6) out.push(`thickness below the slab ${feFmt(dp.h)} mm, less than t/4 = ${feFmt(t / 4)} mm`);
+  for (const dir of ['x', 'y']) {
+    const Ls = spans.filter((sp) => sp.dir === dir).map((sp) => sp.L);
+    const half = (dir === 'x' ? dp.lx : dp.ly) / 2;
+    if (!Ls.length) continue;
+    const Lmax = Math.max(...Ls); const Lmin = Math.min(...Ls);
+    if (half < Lmax / 6 - 1e-6) out.push(`extends ${feFmt(half)} mm from the column centre in ${dir.toUpperCase()}, less than L/6 = ${feFmt(Lmax / 6)} mm`);
+    if (half > Lmin / 4 + 1e-6) out.push(`extends ${feFmt(half)} mm in ${dir.toUpperCase()}, more than the shorter panel over 4 = ${feFmt(Lmin / 4)} mm`);
+  }
+  const measured = spans.length > 0;
+  return { problems: out, measured };
+}
+
 /** Punching at every column, with the moment it transfers. */
 function ecp203_fePunching(ctx) {
   const { fe, geometry: g, mat, factor } = ctx;
   const d = feDepths(g).mean;
-  const fcu = Number(mat.fcu) || 0;
-  const root = Math.sqrt(fcu / ECP203_DATA.gammaC.value);
-  const K = ECP203_FESLAB_DATA;
+  const t = Number(g.t) || 0;
+  fe.__fcu = Number(mat.fcu) || 0;
+  const drops = feDrops(g);
   const steps = []; const checks = []; const perColumn = [];
   steps.push(step({
     code: ECP_FE, clause: '4-2-2-3', symbol: 'd',
     description: 'Effective depth for punching, between the two layers of top bars',
-    expression: 'd = t − cover − φ_top,X', substitution: `${feFmt(Number(g.t))} − ${feFmt(Number(g.cover))} − ${feFmt(Number(g.topDiaX))} = ${feFmt(d)} mm`,
+    expression: 'd = t − cover − φ_top,X', substitution: `${feFmt(t)} − ${feFmt(Number(g.cover))} − ${feFmt(Number(g.topDiaX))} = ${feFmt(d)} mm`,
     value: d, dimension: 'length',
   }));
   for (const s of columnStacks(fe)) {
@@ -16944,120 +17289,49 @@ function ecp203_fePunching(ctx) {
       perColumn.push({ joint: s.joint, node: s.node, u: null, beams: true });
       continue;
     }
-    const pos = columnPosition(fe, s, d);
-    // Shear and moments the slab passes to the column, per combination.
-    const combos = new Set([...(s.below ? Object.keys(s.below.forces) : []), ...(s.above ? Object.keys(s.above.forces) : [])]);
-    let gov = null;
-    const cx = s.cx; const cy = s.cy;
-    for (const combo of combos) {
-      const fb = s.below && s.below.forces[combo];
-      const fa = s.above && s.above.forces[combo];
-      const Q = factor * Math.max(0, Math.abs(fb ? Math.min(0, fb.P) : 0) - Math.abs(fa ? Math.min(0, fa.P) : 0));
-      const Mfx = factor * (Math.abs(fb ? fb.Mx : 0) + Math.abs(fa ? fa.Mx : 0));
-      const Mfy = factor * (Math.abs(fb ? fb.My : 0) + Math.abs(fa ? fa.My : 0));
-      let r;
-      if (pos.position === 'interior') {
-        const b0 = 2 * (cx + d) + 2 * (cy + d);
-        const q0 = Q / (b0 * d);
-        const part = (c1, c2, M) => {
-          const gf = 1 / (1 + (2 / 3) * Math.sqrt((c1 + d) / (c2 + d)));
-          const J = (d * (c1 + d) ** 3) / 6 + (d ** 3 * (c1 + d)) / 6 + (d * (c1 + d) ** 2 * (c2 + d)) / 2;
-          const C = (c1 + d) / 2;
-          return { gf, gq: 1 - gf, J, C, q: (M * (1 - gf) * C) / J };
-        };
-        const ay = part(cx, cy, Mfy);       // moment about Y: analysis direction X
-        const ax = part(cy, cx, Mfx);       // moment about X: analysis direction Y
-        r = { method: 'full', b0, Q, q0, Mfx, Mfy, ax, ay, q: q0 + ax.q + ay.q };
-      } else if (pos.position === 'edge' || pos.position === 'corner') {
-        const openX = pos.open.E || pos.open.W; const openY = pos.open.N || pos.open.S;
-        let b0;
-        if (pos.position === 'edge') b0 = openX ? 2 * (cx + d / 2) + (cy + d) : 2 * (cy + d / 2) + (cx + d);
-        else b0 = (cx + d / 2) + (cy + d / 2);
-        void openY;
-        const beta = K.beta[pos.position];
-        r = { method: 'simplified', b0, Q, beta, q: (Q * beta) / (b0 * d) };
-      } else {
-        r = null;
-      }
-      if (r && (!gov || r.q > gov.q)) gov = { ...r, combo };
-    }
-    if (!gov) {
+    const dp = drops[s.joint] || null;
+    const A = punchSection(fe, s, s.cx, s.cy, d + (dp ? dp.h : 0), factor, 'column');
+    const B = dp ? punchSection(fe, s, dp.lx, dp.ly, d, factor, 'drop') : null;
+    if (A.none) {
       checks.push(check({
         id, title: label, code: ECP_FE, clause: '4-2-2-3', clauseTitle: 'Punching shear',
-        status: pos.position === 'other' ? CHECK_STATUS.NOT_IMPLEMENTED : CHECK_STATUS.NOT_APPLICABLE,
-        note: pos.position === 'other'
+        status: A.none === 'other' ? CHECK_STATUS.NOT_IMPLEMENTED : CHECK_STATUS.NOT_APPLICABLE,
+        note: A.none === 'other'
           ? 'The critical section leaves the slab on two opposite sides, which none of the critical sections of Figure (4-13) describes. Not checked.'
           : 'No column force in the chosen combinations, so the punching cannot be checked.',
       }));
       perColumn.push({ joint: s.joint, node: s.node, u: null });
       continue;
     }
-    const alpha = K.alpha[pos.position];
-    const aOverB = Math.min(cx, cy) / Math.max(cx, cy);
-    const qA = 0.8 * ((alpha * d) / gov.b0 + 0.2) * root;
-    const qB = 0.316 * (0.5 + aOverB) * root;
-    const qC = Math.min(0.316 * root, K.qcupCap.value);
-    const qcup = Math.min(qA, qB, qC);
-    const n0 = fe.nodes[s.node];
-    const cs = [
-      step({
-        code: ECP_FE, clause: '4-2-2-3', symbol: 'b_o',
-        description: `Critical section at d/2 from the column faces — ${pos.position} column`,
-        expression: '§4-2-2-3(2)(a), Figure (4-13)',
-        substitution: `column ${feFmt(cx)} × ${feFmt(cy)} mm at x = ${feFmt(n0.x / 1000, 2)} m, y = ${feFmt(n0.y / 1000, 2)} m, d = ${feFmt(d)} mm → b_o = ${feFmt(gov.b0)} mm`,
-        value: gov.b0, dimension: 'length',
-      }),
-    ];
-    if (gov.method === 'full') {
+    const sections = [A, B].filter((x) => x && !x.none);
+    const worst = sections.reduce((x, y) => (y.u > x.u ? y : x));
+    const cs = sections.flatMap((x) => x.steps);
+    let dropNote = '';
+    let dropFail = false;
+    if (dp) {
+      const R = dropRules(fe, s, dp, t);
+      dropFail = R.problems.length > 0;
       cs.push(step({
-        code: ECP_FE, clause: '4-2-2-3', symbol: 'q_up', description: 'Punching stress from the shear the slab passes to the column',
-        expression: 'q_up = Q_up/(b_o d)   Eq. (4-44)',
-        substitution: `${gov.combo}: Q_up = ${feFmt(gov.Q / 1e3)} kN (column force below${s.above ? ' less the column above' : ''}, × ${factor}) → ${feFmt(gov.q0, 3)} N/mm²`,
-        value: gov.q0, dimension: 'stress',
+        code: ECP_FE, clause: '6-2-5-2', symbol: 'drop',
+        description: 'Dimensions of the drop panel',
+        expression: '§6-2-5-2(د): thickness below the slab ≥ t/4; extending from the column centre ≥ 1/6 of the longer panel in that direction and ≤ 1/4 of the shorter panel',
+        substitution: `${feFmt(dp.lx)} × ${feFmt(dp.ly)} mm, ${feFmt(dp.h)} mm below the slab${R.measured ? '' : '; no span between columns on a line through this column, so the extent limits cannot be formed'}${R.problems.length ? ` — not satisfied: ${R.problems.join('; ')}` : ''}`,
+        value: dp.h, dimension: 'length',
       }));
-      cs.push(step({
-        code: ECP_FE, clause: '6-2-5-7-1', symbol: 'γ_q',
-        description: 'Share of the transferred moment carried by eccentric shear',
-        expression: 'γ_f = 1/(1 + (2/3)√(b₁/b₂))   Eq. (6-20);  γ_q = 1 − γ_f   Eq. (6-21)',
-        substitution: `about Y: b₁/b₂ = ${feFmt(cx + d)}/${feFmt(cy + d)} → γ_q = ${feFmt(gov.ay.gq, 3)}; about X: ${feFmt(cy + d)}/${feFmt(cx + d)} → γ_q = ${feFmt(gov.ax.gq, 3)}`,
-        value: gov.ay.gq,
-      }));
-      cs.push(step({
-        code: ECP_FE, clause: '6-2-5-7-1', symbol: 'q_M',
-        description: 'Punching stress from the moments transferred to the column',
-        expression: 'q = M_f γ_q C/J   Eq. (6-22); J = d(c₁+d)³/6 + d³(c₁+d)/6 + d(c₁+d)²(c₂+d)/2   Eq. (6-23); C = (c₁+d)/2',
-        substitution: `M_f about Y = ${feFmt(gov.Mfy / 1e6, 1)} kN·m, J = ${(gov.ay.J / 1e9).toFixed(3)}×10⁹ mm⁴ → ${feFmt(gov.ay.q, 3)}; about X = ${feFmt(gov.Mfx / 1e6, 1)} kN·m → ${feFmt(gov.ax.q, 3)} N/mm² (column moments at the slab, above and below added)`,
-        value: gov.ay.q + gov.ax.q, dimension: 'stress',
-        note: 'The two moments are taken as acting together and their stresses added to the direct stress at the same corner, which is the upper bound.',
-      }));
-    } else {
-      cs.push(step({
-        code: ECP_FE, clause: '6-2-5-7-3', symbol: 'q',
-        description: 'Punching stress including the moment transfer, simplified method',
-        expression: 'q = Q β/(b_o d)   Eq. (6-25); β = 1,15 interior, 1,30 edge, 1,50 corner',
-        substitution: `${gov.combo}: Q = ${feFmt(gov.Q / 1e3)} kN, β = ${gov.beta} → q = ${feFmt(gov.q, 3)} N/mm²`,
-        value: gov.q, dimension: 'stress',
-        note: 'Used at edge and corner columns: ECP 203-2020 gives J for an interior column and for one direction of an edge column only, so the method the code offers for every column is used.',
-      }));
+      dropNote = ` Drop panel ${feFmt(dp.lx)} × ${feFmt(dp.ly)} × ${feFmt(dp.h)} mm: checked at the column face with d = ${feFmt(d + dp.h)} mm and at the drop edge with d = ${feFmt(d)} mm; the ${worst === A ? 'column face' : 'drop edge'} governs.${dropFail ? ' Its dimensions do not satisfy §6-2-5-2(د).' : ''}`;
     }
-    cs.push(step({
-      code: ECP_FE, clause: '4-2-2-3', symbol: 'q_cup',
-      description: 'Punching strength of the concrete alone, the least of three',
-      expression: '0,8(α d/b_o + 0,2)√(f_cu/γ_c) (4-46-a); 0,316(0,5 + a/b)√(f_cu/γ_c) (4-46-b); 0,316√(f_cu/γ_c) ≤ 1,70 N/mm² (4-46-c)',
-      substitution: `α = ${alpha} → ${feFmt(qA, 3)} · ${feFmt(qB, 3)} · ${feFmt(qC, 3)} → ${feFmt(qcup, 3)} N/mm²`,
-      value: qcup, dimension: 'stress',
-    }));
-    const u = qcup > 0 ? gov.q / qcup : Infinity;
     checks.push(check({
-      id, title: label, code: ECP_FE, clause: gov.method === 'full' ? '6-2-5-7-1' : '6-2-5-7-3', clauseTitle: 'Punching shear with the moment transferred to the column',
-      demand: gov.q, capacity: qcup, dimension: 'stress', utilisation: u,
+      id, title: label, code: ECP_FE, clause: worst.gov.method === 'full' ? '6-2-5-7-1' : '6-2-5-7-3', clauseTitle: 'Punching shear with the moment transferred to the column',
+      demand: worst.gov.q, capacity: worst.qcup, dimension: 'stress', utilisation: worst.u,
+      status: dropFail ? CHECK_STATUS.FAIL : (worst.u <= 1 + 1e-9 ? CHECK_STATUS.PASS : CHECK_STATUS.FAIL),
       failureMode: 'The column punches through the slab',
       steps: cs,
-      note: `Concrete alone, Equation (4-45). ${Number(g.t) < 250 ? 'The slab is under 250 mm, so §4-2-2-3(1)(b) does not allow punching reinforcement: where this fails the slab must be thickened or given a drop panel.' : 'Punching reinforcement (§4-2-2-3(4)) is not designed here.'}`,
+      note: `Concrete alone, Equation (4-45).${dropNote} ${t < 250 ? 'The slab is under 250 mm, so §4-2-2-3(1)(b) does not allow punching reinforcement: where this fails the slab must be thickened or given a drop panel.' : 'Punching reinforcement (§4-2-2-3(4)) is not designed here.'}`,
     }));
     steps.push(...cs);
-    perColumn.push({ joint: s.joint, node: s.node, u, position: pos.position });
+    perColumn.push({ joint: s.joint, node: s.node, u: worst.u, position: A.pos.position, drop: dp ? { ...dp } : null, uColumn: A.u, uDrop: B && !B.none ? B.u : null, governs: worst === A ? 'column' : 'drop', dropFail });
   }
+  delete fe.__fcu;
   return { steps, checks, scratch: { fePunching: perColumn } };
 }
 
@@ -17068,7 +17342,7 @@ function ecp203_feScope() {
     checks: [check({
       id: 'fe.scope', title: 'Not designed in this item', code: ECP_FE, clause: '6-2-5', clauseTitle: 'Flat slabs',
       status: CHECK_STATUS.OUT_OF_SCOPE,
-      note: 'The beams and the columns are their own design items. Bar curtailment and anchorage, openings, drop panels and column heads, punching reinforcement and the calculation of deflection are not designed here; the thickness check is the deemed-to-satisfy route of Table (6-3).',
+      note: 'The beams and the columns are their own design items. Bar curtailment and anchorage, openings, column heads, the reinforcement of drop panels, punching reinforcement and the calculation of deflection are not designed here; the thickness check is the deemed-to-satisfy route of Table (6-3).',
     })],
     scratch: {},
   };
@@ -26953,6 +27227,26 @@ a{color:var(--tg-red-deep)}
 .tg-modal__box h3{margin:0 0 8px;font-size:16px}
 .tg-modal__box p{margin:0 0 14px;color:var(--tg-ink-60);font-size:13px}
 .tg-modal__actions{display:flex;gap:8px;justify-content:flex-end}
+.tg-femap__frame{position:relative;height:560px;border:1px solid var(--tg-rule);background:#fff;overflow:hidden;cursor:grab;user-select:none}
+.tg-femap__frame:active{cursor:grabbing}
+.tg-femap__tools{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2}
+[dir="rtl"] .tg-femap__tools{right:auto;left:8px}
+.tg-femap__tools .tg-btn{min-width:34px;background:#fff;color:var(--tg-ink,#111);border:1px solid var(--tg-rule)}
+.tg-femap__legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-top:8px}
+.tg-feadd{margin-top:14px}
+.tg-feadd__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.tg-feadd__def{display:flex;align-items:center;gap:8px;font-size:13px}
+.tg-feadd__table{width:100%;font-size:13px}
+.tg-feadd__row.is-on td{background:rgba(0,0,0,.04);font-weight:600}
+.tg-feadd .is-bad,.tg-femodal__verdict.is-bad{color:var(--tg-unsafe,#c62828);font-weight:600}
+.tg-feadd .is-ok,.tg-femodal__verdict.is-ok{color:#2e7d32;font-weight:600}
+.tg-femodal{max-width:520px}
+.tg-femodal__row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;font-size:13px}
+.tg-femodal__row select,.tg-femodal__row input{width:130px}
+.tg-femodal__num{display:inline-flex;align-items:center;gap:6px}
+.tg-femodal__mults{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.tg-femodal__verdict{font-size:13px;margin:10px 0}
+@media (max-width:640px){.tg-femap__frame{height:380px}.tg-feadd__table{font-size:12px}}
 .tg-recent{max-width:640px;margin:0 auto 18px}
 .tg-recent h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
 .tg-recent ul{list-style:none;margin:0;padding:0;border:1px solid var(--tg-rule)}
@@ -28859,12 +29153,21 @@ const SIGN_CONVENTION = 'Axis 2 is the major (strong) local axis and axis 3 the 
 
 
 /* ===== src/ui/feSlabMap.js ===== */
-// ui/feSlabMap.js — the plan of a flat slab designed from the model.
+// ui/feSlabMap.js — the plans of a flat slab designed from the model.
 //
 // v3.52.0. Each element is coloured by the worst ratio of steel required to
 // steel provided at its joints, for the layer chosen; each column carries its
 // punching ratio. The numbers come from the result, not from a second
 // calculation here.
+//
+// v3.54.0.
+//  - The added bars of each layer are chosen here: the zones where the mesh is
+//    short are drawn, and a click on a layer opens the choice of diameter, the
+//    number per metre offered at ½, 1, 1½ or 2 times the mesh count.
+//  - A punching plan: each column coloured by its ratio; a click on a column
+//    adds, changes or removes its drop panel.
+//  - Both plans zoom with the wheel about the cursor, pan by dragging, pinch
+//    on a touch screen, and keep their text the same size on the screen.
 
 
 const MAP_LAYERS = [
@@ -28884,9 +29187,16 @@ function mapColour(u, req) {
 }
 
 function feEsc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function feN(x, dp = 0) { return Number.isFinite(Number(x)) ? Number(Number(x).toFixed(dp)).toString() : '—'; }
 
-/** The plan as an SVG string. */
-function feSlabSvg(fe, layers, layerKey, punching) {
+/**
+ * The plan as an SVG string.
+ * opts.mode: 'steel' (default) colours the elements for the layer; 'punch'
+ * leaves them plain and colours the columns. opts.drops draws the drop panels.
+ * Text carries class fe-lbl and data-fs so a viewer can hold its size.
+ */
+function feSlabSvg(fe, layers, layerKey, punching, opts = {}) {
+  const mode = opts.mode || 'steel';
   const N = fe.nodes;
   let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
   for (const p of N) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
@@ -28894,63 +29204,412 @@ function feSlabSvg(fe, layers, layerKey, punching) {
   const pad = Math.max(W, H) * 0.06;
   const X = (x) => x - minX + pad;
   const Y = (y) => maxY - y + pad;            // plan y up
-  const L = layers && layers[layerKey];
+  const L = mode === 'steel' && layers && layers[layerKey];
   const parts = [];
+  const sw = Math.max(W, H) / 300;
+  const fs = Math.max(W, H) / 38;
+  const lbl = (x, y, size, body, attrs = '') => `<text class="fe-lbl" data-fs="${size}" x="${x}" y="${y}" font-size="${size}" ${attrs}>${body}</text>`;
   for (const e of fe.elems) {
     const pts = e.n.map((i) => `${X(N[i].x).toFixed(1)},${Y(N[i].y).toFixed(1)}`).join(' ');
     let u = 0; let req = 0; let worst = e.n[0];
     if (L) for (const i of e.n) { const ui = L.u[i]; if (ui > u) { u = ui; worst = i; } req = Math.max(req, L.req[i]); }
     const tip = L ? `Area ${e.area} · joint ${N[worst].id}: required ${L.req[worst] < 0 ? 'beyond (c/d)max' : `${L.req[worst]} mm²/m`}, provided ${L.prov[worst]} mm²/m, ratio ${u >= 99 ? '—' : u.toFixed(2)}` : `Area ${e.area}`;
-    parts.push(`<polygon points="${pts}" fill="${mapColour(u, req)}" stroke="rgba(0,0,0,.18)" stroke-width="${(Math.max(W, H) / 900).toFixed(2)}"><title>${feEsc(tip)}</title></polygon>`);
+    const fill = mode === 'punch' ? '#f3f1ec' : mapColour(u, req);
+    parts.push(`<polygon points="${pts}" fill="${fill}" stroke="rgba(0,0,0,.18)" stroke-width="1" vector-effect="non-scaling-stroke"><title>${feEsc(tip)}</title></polygon>`);
   }
-  const sw = Math.max(W, H) / 300;
+  // Where the mesh of this layer is short: the zones of added bars.
+  if (L && Array.isArray(L.zones)) {
+    for (const z of L.zones) {
+      const m = (fe.meshSize || 0) / 2;
+      const has = L.add && L.add.As > 0;
+      parts.push(`<rect x="${X(z.x1 - m)}" y="${Y(z.y2 + m)}" width="${z.x2 - z.x1 + 2 * m}" height="${z.y2 - z.y1 + 2 * m}" fill="none" stroke="${has ? '#1d4ed8' : '#c62828'}" stroke-width="2" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"><title>${feEsc(`Added bars needed here: x ${feN(z.x1 / 1000, 2)}–${feN(z.x2 / 1000, 2)} m, y ${feN(z.y1 / 1000, 2)}–${feN(z.y2 / 1000, 2)} m`)}</title></rect>`);
+    }
+  }
   for (const b of fe.beams || []) {
     parts.push(`<line x1="${X(b.x1)}" y1="${Y(b.y1)}" x2="${X(b.x2)}" y2="${Y(b.y2)}" stroke="#3a3a3a" stroke-width="${Math.max(b.b || 0, sw * 3)}" stroke-opacity=".55"><title>${feEsc(`Beam ${b.frame} — ${b.section}`)}</title></line>`);
   }
-  const fs = Math.max(W, H) / 38;
+  const drops = opts.drops || {};
   const byJoint = new Map((punching || []).map((p) => [p.joint, p]));
+  for (const s of columnStacks(fe)) {
+    const c = N[s.node];
+    const dp = drops[s.joint];
+    if (dp) {
+      parts.push(`<rect x="${X(c.x - dp.lx / 2)}" y="${Y(c.y + dp.ly / 2)}" width="${dp.lx}" height="${dp.ly}" fill="rgba(29,78,216,.10)" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"><title>${feEsc(`Drop panel ${feN(dp.lx)} × ${feN(dp.ly)} mm, ${feN(dp.h)} mm below the slab`)}</title></rect>`);
+    }
+  }
   for (const s of columnStacks(fe)) {
     const c = N[s.node];
     const pr = byJoint.get(s.joint);
     const u = pr && Number.isFinite(pr.u) ? pr.u : null;
-    const fill = pr && pr.beams ? '#555' : (u === null ? '#888' : (u > 1 ? '#c62828' : '#2e7d32'));
-    parts.push(`<rect x="${X(c.x - s.cx / 2)}" y="${Y(c.y + s.cy / 2)}" width="${s.cx}" height="${s.cy}" fill="${fill}" stroke="#000" stroke-width="${sw}"><title>${feEsc(`Column ${s.frames.join('/')}${pr && pr.beams ? ' — beams frame in; no punching check' : u !== null ? ` — punching ratio ${u.toFixed(2)}` : ''}`)}</title></rect>`);
-    if (u !== null) parts.push(`<text x="${X(c.x) + s.cx / 2 + fs * 0.3}" y="${Y(c.y) - s.cy / 2 - fs * 0.2}" font-size="${fs}" font-family="monospace" font-weight="700" stroke="#fff" stroke-width="${fs * 0.18}" paint-order="stroke" fill="${u > 1 ? "#c62828" : "#2e7d32"}">${u.toFixed(2)}</text>`);
+    const fill = pr && pr.beams ? '#555' : (u === null ? '#888' : (u > 1 || (pr && pr.dropFail) ? '#c62828' : '#2e7d32'));
+    const tip = `Column ${s.frames.join('/')}${pr && pr.beams ? ' — beams frame in; no punching check' : u !== null ? ` — punching ratio ${u.toFixed(2)}${pr.drop ? `, drop ${feN(pr.drop.lx)} × ${feN(pr.drop.ly)} × ${feN(pr.drop.h)} mm` : ''}` : ''}${mode === 'punch' && !(pr && pr.beams) ? ' — click to add or change a drop panel' : ''}`;
+    const click = mode === 'punch' && !(pr && pr.beams) ? ` data-joint="${feEsc(s.joint)}" style="cursor:pointer"` : '';
+    parts.push(`<rect x="${X(c.x - s.cx / 2)}" y="${Y(c.y + s.cy / 2)}" width="${s.cx}" height="${s.cy}" fill="${fill}" stroke="#000" stroke-width="1" vector-effect="non-scaling-stroke"${click}><title>${feEsc(tip)}</title></rect>`);
+    if (u !== null) {
+      const size = mode === 'punch' ? fs * 1.1 : fs;
+      parts.push(lbl(X(c.x) + s.cx / 2 + fs * 0.3, Y(c.y) - s.cy / 2 - fs * 0.2, size, `${u.toFixed(2)}${mode === 'punch' ? (u > 1 || pr.dropFail ? ' UNSAFE' : ' SAFE') : ''}`,
+        `font-family="monospace" font-weight="700" stroke="#fff" stroke-width="${size * 0.18}" paint-order="stroke" fill="${u > 1 || (pr && pr.dropFail) ? '#c62828' : '#2e7d32'}"${click}`));
+    }
   }
-  // North arrow-free axes: X to the right, Y up.
+  // Axes: X to the right, Y up.
   const ax = pad * 0.4; const ay = H + pad * 1.6;
-  parts.push(`<g font-size="${fs * 0.8}" font-family="sans-serif" fill="#444"><line x1="${ax}" y1="${ay}" x2="${ax + pad}" y2="${ay}" stroke="#444" stroke-width="${sw}"/><text x="${ax + pad * 1.1}" y="${ay + fs * 0.3}">X</text><line x1="${ax}" y1="${ay}" x2="${ax}" y2="${ay - pad}" stroke="#444" stroke-width="${sw}"/><text x="${ax - fs * 0.3}" y="${ay - pad * 1.15}">Y</text></g>`);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W + 2 * pad} ${H + 2 * pad}" style="width:100%;max-height:560px;background:#fff">${parts.join('')}</svg>`;
+  parts.push(`<g fill="#444"><line x1="${ax}" y1="${ay}" x2="${ax + pad}" y2="${ay}" stroke="#444" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${lbl(ax + pad * 1.1, ay + fs * 0.3, fs * 0.8, 'X', 'font-family="sans-serif"')}<line x1="${ax}" y1="${ay}" x2="${ax}" y2="${ay - pad}" stroke="#444" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${lbl(ax - fs * 0.3, ay - pad * 1.15, fs * 0.8, 'Y', 'font-family="sans-serif"')}</g>`);
+  const style = opts.viewer ? 'width:100%;height:100%;display:block;background:#fff;touch-action:none' : 'width:100%;max-height:560px;background:#fff';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W + 2 * pad} ${H + 2 * pad}" data-w="${W + 2 * pad}" data-h="${H + 2 * pad}" style="${style}">${parts.join('')}</svg>`;
 }
 
-/** The sheet on the item screen. */
-function feSlabMapSheet(app, item, res) {
+/* ------------------------------------------------------------------ */
+/* zoom and pan                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wheel zoom about the cursor, drag to pan, pinch on touch, +/−/Fit buttons.
+ * The view box is kept in `store[key]` so it survives a re-render. Text keeps
+ * its size on screen: its font size follows the zoom.
+ */
+function attachViewer(frame, svg, store, key, onTap) {
+  const W0 = Number(svg.getAttribute('data-w')); const H0 = Number(svg.getAttribute('data-h'));
+  let vb = store[key] ? { ...store[key] } : { x: 0, y: 0, w: W0, h: H0 };
+  const labels = [...svg.querySelectorAll('.fe-lbl')];
+  const apply = () => {
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    const k = vb.w / W0;
+    for (const t of labels) {
+      const f = Number(t.getAttribute('data-fs')) * k;
+      t.setAttribute('font-size', f);
+      if (t.getAttribute('stroke-width')) t.setAttribute('stroke-width', f * 0.18);
+    }
+    store[key] = { ...vb };
+  };
+  // Screen point to plan units, through the SVG's own transform.
+  const toSvg = (cx, cy) => {
+    const m = svg.getScreenCTM && svg.getScreenCTM();
+    if (m && svg.createSVGPoint) {
+      const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+      const q = p.matrixTransform(m.inverse());
+      return { x: q.x, y: q.y };
+    }
+    const r = svg.getBoundingClientRect();
+    return { x: vb.x + ((cx - r.left) / (r.width || 1)) * vb.w, y: vb.y + ((cy - r.top) / (r.height || 1)) * vb.h };
+  };
+  const zoomAt = (px, py, f) => {
+    const w = Math.min(W0 * 4, Math.max(W0 / 40, vb.w * f));
+    const s = w / vb.w;
+    vb = { x: px - (px - vb.x) * s, y: py - (py - vb.y) * s, w, h: vb.h * s };
+    apply();
+  };
+  const centre = () => ({ x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 });
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const p = toSvg(e.clientX, e.clientY);
+    zoomAt(p.x, p.y, e.deltaY < 0 ? 1 / 1.2 : 1.2);
+  }, { passive: false });
+  const pts = new Map();
+  let drag = null; let moved = false; let pinch = null; let downOn = null;
+  svg.addEventListener('pointerdown', (e) => {
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Captured, the pointer reports the SVG as its target; the column is read here.
+    downOn = e.target && e.target.closest ? e.target.closest('[data-joint]') : null;
+    try { svg.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    moved = false;
+    if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, vb: { ...vb } };
+    if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), w: vb.w };
+      drag = null;
+    }
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d > 0) {
+        const m = toSvg((a.x + b.x) / 2, (a.y + b.y) / 2);
+        zoomAt(m.x, m.y, (pinch.w * (pinch.d / d)) / vb.w);
+        moved = true;
+      }
+      return;
+    }
+    if (!drag) return;
+    const dxp = e.clientX - drag.x; const dyp = e.clientY - drag.y;
+    if (Math.abs(dxp) + Math.abs(dyp) > 4) moved = true;
+    if (!moved) return;
+    const r = svg.getBoundingClientRect();
+    const k = Math.max(drag.vb.w / (r.width || 1), drag.vb.h / (r.height || 1));
+    vb = { ...drag.vb, x: drag.vb.x - dxp * k, y: drag.vb.y - dyp * k };
+    apply();
+  });
+  const end = (e) => {
+    const wasTap = pts.size === 1 && !moved && !pinch;
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinch = null;
+    if (!pts.size) drag = null;
+    if (wasTap && onTap && e.type === 'pointerup' && downOn) onTap(downOn.getAttribute('data-joint'));
+    if (!pts.size) downOn = null;
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  // A click without pointer events (keyboard, tests) still reaches a column.
+  svg.addEventListener('click', (e) => {
+    if (e.detail !== 0 || !onTap) return;
+    const t = e.target && e.target.closest ? e.target.closest('[data-joint]') : null;
+    if (t) onTap(t.getAttribute('data-joint'));
+  });
+  const tools = h('div', { class: 'tg-femap__tools' },
+    button('+', { small: true, variant: 'ghost', title: 'Zoom in', onClick: () => { const c = centre(); zoomAt(c.x, c.y, 1 / 1.4); } }),
+    button('−', { small: true, variant: 'ghost', title: 'Zoom out', onClick: () => { const c = centre(); zoomAt(c.x, c.y, 1.4); } }),
+    button('Fit', { small: true, variant: 'ghost', title: 'Fit the plan', onClick: () => { vb = { x: 0, y: 0, w: W0, h: H0 }; apply(); } }));
+  frame.appendChild(tools);
+  apply();
+}
+
+/* ------------------------------------------------------------------ */
+/* modals                                                              */
+/* ------------------------------------------------------------------ */
+
+function feModal(title, build) {
+  let veil = null;
+  const close = () => { document.removeEventListener('keydown', onKey, true); if (veil) veil.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  const box = h('div', { class: 'tg-modal__box tg-femodal' }, h('h3', null, title));
+  veil = h('div', { class: 'tg-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title,
+    onClick: (e) => { if (e.target === veil) close(); } }, box);
+  build(box, close);
+  document.addEventListener('keydown', onKey, true);
+  document.body.appendChild(veil);
+  translateTree(veil);
+  const first = box.querySelector('select, input');
+  if (first) first.focus();
+  return veil;
+}
+
+function feModalRow(label, control) {
+  return h('label', { class: 'tg-femodal__row' }, h('span', null, label), control);
+}
+
+function feNumIn(id, value, unit) {
+  const el = h('input', { id, type: 'text', inputmode: 'decimal', value: value === '' || value === undefined || value === null ? '' : String(value) });
+  return h('span', { class: 'tg-femodal__num' }, el, unit ? h('small', null, unit) : null);
+}
+
+/** The added bars of one layer: diameter, number per metre, and the guard. */
+function openAddModal(app, item, res, layerKey, onEdit) {
+  const LD = FE_LAYERS.find((x) => x.key === layerKey);
+  const L = res.scratch.feLayers[layerKey];
+  const g = item.geometry || {};
+  const units = app.store.state.project.units;
+  const cur = (g.add || {})[layerKey] || {};
+  const meshN = Number(g[LD.n]) || 0;
+  const startDia = Number(cur.dia) || Number(g.addDiaDefault) || 12;
+  const tooThin = (L.req || []).some((r) => r < 0);
+  feModal(`Added bars — ${LD.label}`, (box, close) => {
+    const dia = h('select', { id: 'feadd-dia' }, ...barDiameterOptions(units, startDia).map((o) => h('option', { value: o.value, ...(Number(o.value) === startDia ? { selected: true } : {}) }, o.label)));
+    const nIn = feNumIn('feadd-n', '', 'per metre');
+    const nEl = nIn.querySelector('input');
+    const mults = h('div', { class: 'tg-femodal__mults' });
+    const verdict = h('p', { class: 'tg-femodal__verdict' });
+    const As = (d, n) => n * Math.PI * d * d / 4;
+    const refresh = () => {
+      const d = Number(dia.value); const n = Number(nEl.value);
+      const a = As(d, n);
+      const ok = L.addNeed <= 0 || a + 1e-6 >= L.addNeed;
+      verdict.className = `tg-femodal__verdict ${ok && n > 0 ? 'is-ok' : 'is-bad'}`;
+      verdict.textContent = !(n > 0)
+        ? 'Enter the number per metre.'
+        : `Mesh ${feN(L.base)} + added ${feN(a)} = ${feN(L.base + a)} mm²/m against ${feN(L.base + L.addNeed)} mm²/m required at the worst joint — ${ok ? 'covered' : 'NOT covered: increase the diameter or the number'}.`;
+      save.disabled = !(n > 0) || !ok;
+    };
+    const suggest = () => {
+      const s = feSuggestAdd(meshN, Number(dia.value), L.addNeed);
+      mults.replaceChildren(...[0.5, 1, 1.5, 2].map((m) => button(`${m === 0.5 ? '½' : m === 1.5 ? '1½' : m} × ${feN(meshN)} = ${feN(meshN * m, 1)}`, {
+        small: true, variant: s && s.mult === m && !s.short ? 'primary' : 'ghost',
+        onClick: () => { nEl.value = String(meshN * m); refresh(); },
+      })));
+      if (s) nEl.value = String(s.n);
+      refresh();
+    };
+    dia.addEventListener('change', suggest);
+    nEl.addEventListener('input', refresh);
+    const save = button('Save', { small: true, variant: 'primary', id: 'feadd-save', onClick: () => {
+      const d = Number(dia.value); const n = Number(nEl.value);
+      if (!(n > 0) || As(d, n) + 1e-6 < L.addNeed) { toast('The added bars do not cover the steel required. Increase them.', 'err'); return; }
+      onEdit((x) => ({ ...x, geometry: { ...x.geometry, add: { ...(x.geometry.add || {}), [layerKey]: { dia: d, n } } } }),
+        { field: `add.${layerKey}`, from: cur.n ? `${cur.n} Ø${cur.dia}/m` : 'none', to: `${n} Ø${d}/m`, reason: `Added bars of ${LD.label.toLowerCase()} chosen on the slab plan` });
+      close();
+    } });
+    box.append(...[
+      h('p', null, L.addNeed > 0
+        ? `The mesh, ${feN(meshN, 1)} Ø${g[LD.dia]} per metre (${feN(L.base)} mm²/m), is short in ${L.zones.length} zone${L.zones.length === 1 ? '' : 's'} by up to ${feN(L.addNeed)} mm²/m. The added bars are counted inside those zones, drawn dashed on the plan.`
+        : 'The mesh covers this layer everywhere; no added bars are needed.'),
+      tooThin ? note({ variant: 'warn', title: 'Beyond (c/d)max', body: 'At some joints the section cannot carry the moment without compression steel. No added bars cover that: thicken the slab or add a drop panel on the punching plan.' }) : null,
+      feModalRow(`Diameter (${symbolFor(units, 'length')})`, dia),
+      feModalRow('Number per metre', nIn),
+      h('div', null, h('small', null, 'Offered at ½, 1, 1½ or 2 times the mesh count, so the bars sit between or beside the mesh bars:'), mults),
+      verdict,
+      h('div', { class: 'tg-modal__actions' },
+        cur.n ? button('Remove', { small: true, variant: 'ghost', onClick: () => {
+          onEdit((x) => { const a = { ...(x.geometry.add || {}) }; delete a[layerKey]; return { ...x, geometry: { ...x.geometry, add: a } }; },
+            { field: `add.${layerKey}`, from: `${cur.n} Ø${cur.dia}/m`, to: 'none', reason: `Added bars of ${LD.label.toLowerCase()} removed on the slab plan` });
+          close();
+        } }) : null,
+        button('Cancel', { small: true, variant: 'ghost', onClick: close }),
+        save),
+    ].filter(Boolean));
+    suggest();
+    if (cur.n) { nEl.value = String(cur.n); refresh(); }
+  });
+}
+
+/** The drop panel of one column. */
+function openDropModal(app, item, res, joint, onEdit) {
+  const fe = item.fe;
+  const g = item.geometry || {};
+  const units = app.store.state.project.units;
+  const s = columnStacks(fe).find((x) => x.joint === joint);
+  if (!s) return;
+  const pr = (res.scratch.fePunching || []).find((x) => x.joint === joint) || {};
+  const cur = (g.drops || {})[joint] || {};
+  const t = Number(g.t) || 0;
+  const sym = symbolFor(units, 'length');
+  const show = (v) => (Number(v) > 0 ? Number(fromBase(Number(v), 'length', units).toFixed(3)) : '');
+  const spans = columnSpans(fe).filter((sp) => sp.from === s || sp.to === s);
+  const lim = (dir) => {
+    const Ls = spans.filter((sp) => sp.dir === dir).map((sp) => sp.L);
+    if (!Ls.length) return null;
+    return { min: (2 * Math.max(...Ls)) / 6, max: (2 * Math.min(...Ls)) / 4 };
+  };
+  const lx = lim('x'); const ly = lim('y');
+  const f = (v) => `${Number(fromBase(v, 'length', units).toFixed(2))} ${sym}`;
+  feModal(`Column ${s.frames.join('/')} — punching`, (box, close) => {
+    const inLx = feNumIn('fedrop-lx', show(cur.lx), sym);
+    const inLy = feNumIn('fedrop-ly', show(cur.ly), sym);
+    const inH = feNumIn('fedrop-h', show(cur.h), sym);
+    const u = Number.isFinite(pr.u) ? pr.u : null;
+    box.append(...[
+      h('p', null, u === null
+        ? 'No punching ratio for this column.'
+        : `Punching ratio ${u.toFixed(2)} — ${u > 1 || pr.dropFail ? 'UNSAFE' : 'SAFE'}${pr.position ? `, ${pr.position} column` : ''}.${pr.drop ? ` Column face ${feN(pr.uColumn, 2)}, drop edge ${feN(pr.uDrop, 2)}; the ${pr.governs === 'drop' ? 'drop edge' : 'column face'} governs.` : ''}${pr.dropFail ? ' The drop does not satisfy §6-2-5-2(د).' : ''}`),
+      h('p', null, `Drop panel, ECP 203-2020 §6-2-5-2(د): thickness below the slab at least t/4 = ${f(t / 4)}; ${lx ? `length in X ${f(lx.min)} to ${f(lx.max)}` : 'length in X: no span on a line through this column to measure it from'}; ${ly ? `width in Y ${f(ly.min)} to ${f(ly.max)}` : 'width in Y: no span on a line through this column to measure it from'}. Punching is then checked at the column face with d + h, and at the drop edge with the slab d.`),
+      feModalRow('Length in X', inLx),
+      feModalRow('Width in Y', inLy),
+      feModalRow('Thickness below the slab', inH),
+      note({ variant: 'warn', title: 'Re-analyse', body: 'A drop panel stiffens the slab at the column. The moments imported were analysed without it: add it to the SAP2000 model, re-run and re-import before the item is issued.' }),
+      h('div', { class: 'tg-modal__actions' },
+        cur.lx ? button('Remove drop', { small: true, variant: 'ghost', onClick: () => {
+          onEdit((x) => { const d = { ...(x.geometry.drops || {}) }; delete d[joint]; return { ...x, geometry: { ...x.geometry, drops: d } }; },
+            { field: `drops.${joint}`, from: `${cur.lx} × ${cur.ly} × ${cur.h} mm`, to: 'none', reason: `Drop panel at column ${s.frames.join('/')} removed on the punching plan` });
+          close();
+        } }) : null,
+        button('Cancel', { small: true, variant: 'ghost', onClick: close }),
+        button('Save', { small: true, variant: 'primary', id: 'fedrop-save', onClick: () => {
+          const rd = (el) => toBase(Number(el.querySelector('input').value), 'length', units);
+          const d = { lx: rd(inLx), ly: rd(inLy), h: rd(inH) };
+          if (!(d.lx > s.cx && d.ly > s.cy && d.h > 0)) { toast('Enter a drop larger than the column, with a thickness.', 'err'); return; }
+          onEdit((x) => ({ ...x, geometry: { ...x.geometry, drops: { ...(x.geometry.drops || {}), [joint]: d } } }),
+            { field: `drops.${joint}`, from: cur.lx ? `${cur.lx} × ${cur.ly} × ${cur.h} mm` : 'none', to: `${Math.round(d.lx)} × ${Math.round(d.ly)} × ${Math.round(d.h)} mm`, reason: `Drop panel at column ${s.frames.join('/')} set on the punching plan` });
+          close();
+        } })),
+    ].filter(Boolean));
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* the sheets on the item screen                                       */
+/* ------------------------------------------------------------------ */
+
+function viewerFrame(app, item, svgText, key, onTap) {
+  const frame = h('div', { class: 'tg-femap__frame' });
+  frame.innerHTML = svgText;
+  const svg = frame.querySelector('svg');
+  app.feView = app.feView || {};
+  if (svg) attachViewer(frame, svg, app.feView, `${item.id}:${key}`, onTap);
+  return frame;
+}
+
+const LEGEND = [['#eceae4', 'no bars needed'], ['#cfe6d2', '≤ 0.50'], ['#7cb987', '0.50 – 0.85'], ['#e9a23b', '0.85 – 1.00'], ['#c62828', 'over 1.00, or beyond (c/d)max']];
+const swatch = (c, dashed) => h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: dashed ? 'transparent' : c, border: dashed ? `2px dashed ${c}` : '1px solid rgba(0,0,0,.2)', marginRight: '5px', verticalAlign: '-2px' } });
+
+/** The slab plan, with the added bars of each layer. */
+function feSlabMapSheet(app, item, res, onEdit) {
   if (!item || !item.fe || !res || !res.scratch || !res.scratch.feLayers) return null;
   const key = app.feMapLayer || 'bx';
-  const holder = h('div', { class: 'tg-femap' });
-  holder.innerHTML = feSlabSvg(item.fe, res.scratch.feLayers, key, res.scratch.fePunching);
-  const L = res.scratch.feLayers[key];
+  const g = item.geometry || {};
+  const units = app.store.state.project.units;
+  const layers = res.scratch.feLayers;
+  const frame = viewerFrame(app, item, feSlabSvg(item.fe, layers, key, res.scratch.fePunching, { viewer: true, drops: feDrops(g) }), `steel:${key}`, null);
+  const L = layers[key];
+  const addRows = FE_LAYERS.map((LD) => {
+    const R = layers[LD.key];
+    if (!R) return null;
+    const a = R.add || {};
+    const short = R.addNeed > 0 && !(a.As + 1e-6 >= R.addNeed);
+    const needTxt = R.addNeed > 0 ? `${feN(R.addNeed)} mm²/m in ${R.zones.length} zone${R.zones.length === 1 ? '' : 's'}` : 'none';
+    const status = R.addNeed > 0 ? (short ? 'short' : 'covered') : 'not needed';
+    return h('tr', { class: `tg-feadd__row${LD.key === key ? ' is-on' : ''}`, 'data-layer': LD.key },
+      h('td', null, h('a', { href: '#', onClick: (e) => { e.preventDefault(); app.feMapLayer = LD.key; app.render(); } }, LD.label)),
+      h('td', null, `${feN(g[LD.n], 1)} Ø${g[LD.dia]}/m = ${feN(R.base)}`),
+      h('td', null, needTxt),
+      h('td', null, a.n ? `${feN(a.n, 1)} Ø${a.dia}/m = ${feN(a.As)}` : '—'),
+      h('td', { class: short ? 'is-bad' : 'is-ok' }, status),
+      h('td', null, onEdit && R.addNeed > 0 ? button(a.n ? 'Change…' : 'Add bars…', { small: true, id: `feadd-${LD.key}`, onClick: () => openAddModal(app, item, res, LD.key, onEdit) }) : null));
+  }).filter(Boolean);
+  const defDia = onEdit ? h('label', { class: 'tg-feadd__def' }, h('span', null, 'Default diameter for added bars'),
+    select({ id: 'feadd-default', value: String(Number(g.addDiaDefault) || 12),
+      options: barDiameterOptions(units, Number(g.addDiaDefault) || 12),
+      onChange: (v) => onEdit((x) => ({ ...x, geometry: { ...x.geometry, addDiaDefault: Number(v) } }), { field: 'addDiaDefault', from: String(g.addDiaDefault || ''), to: String(v), reason: 'Default diameter for added bars changed on the slab plan' }) })) : null;
   return sheet({
     title: 'Slab plan',
-    lede: `${item.fe.nodes.length} joints, ${item.fe.elems.length} elements, ${(item.fe.columns || []).length} columns, from ${item.imported ? item.imported.source : 'the model'}. Each element shows the worst ratio of steel required to steel provided at its joints; each column its punching ratio. Hover for the values.`,
+    lede: `${item.fe.nodes.length} joints, ${item.fe.elems.length} elements, ${(item.fe.columns || []).length} columns, from ${item.imported ? item.imported.source : 'the model'}. Each element shows the worst ratio of steel required to steel provided at its joints; dashed rectangles are where the mesh is short. Wheel to zoom, drag to pan.`,
     actions: [select({
       id: 'femap-layer', value: key,
       options: MAP_LAYERS.map((x) => ({ value: x.key, label: x.label })),
       onChange: (v) => { app.feMapLayer = v; app.render(); },
     })],
     body: h('div', null,
-      holder,
-      h('div', { class: 'tg-femap__legend', style: { display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '12px', marginTop: '8px' } },
-        ...[['#eceae4', 'no bars needed'], ['#cfe6d2', '≤ 0.50'], ['#7cb987', '0.50 – 0.85'], ['#e9a23b', '0.85 – 1.00'], ['#c62828', 'over 1.00, or beyond (c/d)max']]
-          .map(([c, t]) => h('span', null, h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: c, border: '1px solid rgba(0,0,0,.2)', marginRight: '5px', verticalAlign: '-2px' } }), t))),
+      h('div', { class: 'tg-femap' }, frame),
+      h('div', { class: 'tg-femap__legend' },
+        ...LEGEND.map(([c, t]) => h('span', null, swatch(c), t)),
+        h('span', null, swatch('#c62828', true), 'added bars needed, none given'),
+        h('span', null, swatch('#1d4ed8', true), 'zone of the added bars')),
+      h('div', { class: 'tg-feadd' },
+        h('div', { class: 'tg-feadd__head' }, h('strong', null, 'Added bars, A_s,add'), defDia),
+        h('table', { class: 'tg-table tg-feadd__table' },
+          h('thead', null, h('tr', null, ...['Layer', 'Mesh (mm²/m)', 'Needed beyond the mesh', 'Added (mm²/m)', '', ''].map((x) => h('th', null, x)))),
+          h('tbody', null, ...addRows))),
       L ? note({
         variant: 'code',
         title: 'Base mesh and least steel',
-        body: `Base mesh ${L.base.toFixed(0)} mm²/m at d = ${L.d.toFixed(0)} mm; least steel ${L.asMin.toFixed(0)} mm²/m (ECP 203-2020 §6-2-1-2-3). Design moments by Wood–Armer (Wood 1968, Armer 1968), not a clause of the code.`,
+        body: `Base mesh ${L.base.toFixed(0)} mm²/m at d = ${L.d.toFixed(0)} mm; least steel ${L.asMin.toFixed(0)} mm²/m (ECP 203-2020 §6-2-1-2-3). Hogging over the columns at the column face (§6-2-5-5(b)). Design moments by Wood–Armer (Wood 1968, Armer 1968), not a clause of the code.`,
       }) : null,
     ),
   });
 }
+
+/** The punching plan: each column SAFE or UNSAFE; a click sets its drop panel. */
+function fePunchingSheet(app, item, res, onEdit) {
+  if (!item || !item.fe || !res || !res.scratch || !res.scratch.fePunching) return null;
+  const g = item.geometry || {};
+  const drops = feDrops(g);
+  const P = res.scratch.fePunching;
+  const tap = onEdit ? (joint) => openDropModal(app, item, res, joint, onEdit) : null;
+  const frame = viewerFrame(app, item, feSlabSvg(item.fe, null, null, P, { mode: 'punch', viewer: true, drops }), 'punch', tap);
+  const nUnsafe = P.filter((p) => (Number.isFinite(p.u) && p.u > 1) || p.dropFail).length;
+  const nDrops = Object.keys(drops).length;
+  return sheet({
+    title: 'Punching plan',
+    lede: `Each column with its punching ratio, ECP 203-2020 §4-2-2-3 and §6-2-5-7. ${nUnsafe ? `${nUnsafe} column${nUnsafe === 1 ? ' is' : 's are'} UNSAFE.` : 'Every column checked is SAFE.'} Click a column to add, change or remove a drop panel. Wheel to zoom, drag to pan.`,
+    body: h('div', null,
+      h('div', { class: 'tg-femap tg-femap--punch' }, frame),
+      h('div', { class: 'tg-femap__legend' },
+        h('span', null, swatch('#2e7d32'), 'SAFE'), h('span', null, swatch('#c62828'), 'UNSAFE'),
+        h('span', null, swatch('#555'), 'beams frame in, not checked'), h('span', null, swatch('#1d4ed8', true), 'drop panel')),
+      nDrops ? note({ variant: 'warn', title: 'Re-analyse in SAP2000', body: `${nDrops} drop panel${nDrops === 1 ? ' has' : 's have'} been added here and ${nDrops === 1 ? 'is' : 'are'} not in the model the moments came from. Add ${nDrops === 1 ? 'it' : 'them'} to the SAP2000 model, re-run and re-import before the item is issued.` }) : null,
+    ),
+  });
+}
+
 
 
 /* ===== src/ui/forms.js ===== */
@@ -29008,6 +29667,25 @@ function optionsWithCurrent(options, raw, item, path) {
  * A yes/no field the element needs, still blank (v3.49.0). It is shown as
  * "Choose…" rather than as whichever option comes second.
  */
+/**
+ * v3.54.0: the bar diameters offered everywhere a reinforcing bar is chosen,
+ * in mm (shown in the project's length unit). Anchors are not bars and keep
+ * their own box.
+ */
+const BAR_DIAMETERS = [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 32];
+const BAR_DIA_PATH = /(^|\.)(barDia|topBarDia|sideBarDia|stirrupDia|tieDia|secondaryBarDia|botDiaX|botDiaY|topDiaX|topDiaY|extraDia|addDiaDefault)$|rebar\.dia$/;
+function isBarDiameterPath(path) { return BAR_DIA_PATH.test(String(path || '')); }
+function barDiameterOptions(units, current) {
+  const fmt = (mm) => {
+    const v = fromBase(mm, 'length', units);
+    return String(Number(v.toFixed(3)));
+  };
+  const opts = BAR_DIAMETERS.map((mm) => ({ value: String(mm), label: fmt(mm) }));
+  const c = Number(current);
+  if (c > 0 && !BAR_DIAMETERS.includes(c)) opts.push({ value: String(c), label: `${fmt(c)} (not in the list)` });
+  return opts;
+}
+
 function boolBlank(f, raw, kind) {
   // v3.52.0: a required choice of several options reads Choose… as well.
   return !!(f && (f.boolean || f.chooseBlank)) && (raw === '' || raw === null || raw === undefined) && isRequiredPath(kind, f.path);
@@ -29207,14 +29885,13 @@ const FORM_SPECS = {
     groups: [
       {
         key: 'fe.slab', title: 'Slab', fields: [
-          { path: 'geometry.t', label: 'Thickness t', dim: 'length' },
-          { path: 'geometry.cover', label: 'Clear cover to the outer bars', dim: 'length' },
           { path: 'geometry.panelType', label: 'Panel that governs the thickness, Table (6-3)', chooseBlank: true, options: [
             { value: 'exteriorNoEdge', label: 'Exterior panel, no edge beam' },
             { value: 'exteriorEdge', label: 'Exterior panel with an edge beam (depth ≥ 3t)' },
             { value: 'interior', label: 'Interior panel' },
           ] },
-          { path: 'geometry.avgWidth', label: 'Averaging width across the bars (blank: none)', dim: 'length', optional: true },
+          { path: 'geometry.t', label: 'Thickness t', dim: 'length' },
+          { path: 'geometry.cover', label: 'Clear cover to the outer bars', dim: 'length' },
         ],
       },
       {
@@ -29228,24 +29905,22 @@ const FORM_SPECS = {
       {
         key: 'fe.bottom', title: 'Bottom mesh', fields: [
           { path: 'geometry.botDiaX', label: 'Bars in X, diameter (outer layer)', dim: 'length' },
-          { path: 'geometry.botSpX', label: 'Bars in X, spacing', dim: 'length' },
+          { path: 'geometry.botNX', label: 'Bars in X, number per metre (at least 5)', min: 5 },
           { path: 'geometry.botDiaY', label: 'Bars in Y, diameter', dim: 'length' },
-          { path: 'geometry.botSpY', label: 'Bars in Y, spacing', dim: 'length' },
+          { path: 'geometry.botNY', label: 'Bars in Y, number per metre (at least 5)', min: 5 },
         ],
       },
       {
         key: 'fe.top', title: 'Top mesh', fields: [
           { path: 'geometry.topDiaX', label: 'Bars in X, diameter (outer layer)', dim: 'length' },
-          { path: 'geometry.topSpX', label: 'Bars in X, spacing', dim: 'length' },
+          { path: 'geometry.topNX', label: 'Bars in X, number per metre (at least 5)', min: 5 },
           { path: 'geometry.topDiaY', label: 'Bars in Y, diameter', dim: 'length' },
-          { path: 'geometry.topSpY', label: 'Bars in Y, spacing', dim: 'length' },
+          { path: 'geometry.topNY', label: 'Bars in Y, number per metre (at least 5)', min: 5 },
         ],
       },
       {
-        key: 'fe.extra', title: 'Added top bars over the columns', fields: [
-          { path: 'geometry.extraDia', label: 'Diameter (blank: none)', dim: 'length', optional: true },
-          { path: 'geometry.extraSp', label: 'Spacing', dim: 'length', optional: true },
-          { path: 'geometry.extraExtent', label: 'Reach each side of the column centre', dim: 'length', optional: true },
+        key: 'fe.add', title: 'Added bars (chosen on the slab plan)', fields: [
+          { path: 'geometry.addDiaDefault', label: 'Diameter offered first for added bars', optional: true },
         ],
       },
     ],
@@ -32322,7 +32997,15 @@ function sheetBlocks(app, item, opts = {}) {
         }
         blocks.push(block(row));
       }
-      blocks.push(block(h('p', { class: 'cs-cap' }, 'Grey: no bars needed at that face. Pale and mid green: up to 0.50 and 0.85 of the bars provided. Amber: up to 1.00. Red: over 1.00, or beyond (c/d)max. Each column carries its punching ratio.')));
+      blocks.push(block(h('p', { class: 'cs-cap' }, 'Grey: no bars needed at that face. Pale and mid green: up to 0.50 and 0.85 of the bars provided. Amber: up to 1.00. Red: over 1.00, or beyond (c/d)max. Dashed: zones where the mesh is short and the added bars are counted. Each column carries its punching ratio.')));
+      // v3.54.0: the punching plan, with the drop panels.
+      if (res.scratch.fePunching) {
+        const row = h('div', { class: 'cs-femap', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '10px', height: '300px' } });
+        const cell = h('div', { style: { height: '300px' } });
+        cell.innerHTML = `<div style="font-size:10px;font-weight:700;margin-bottom:2px">Punching plan — ratio at each column, SAFE or UNSAFE</div>${feSlabSvg(item.fe, null, null, res.scratch.fePunching, { mode: 'punch', drops: feDrops(item.geometry || {}) }).replace('max-height:560px', 'max-height:280px')}`;
+        row.appendChild(cell);
+        blocks.push(block(row));
+      }
     }
     checksAll.forEach((c, i) => designCheckBlocks(blocks, c, i + 1, fmt));
   }
@@ -34207,6 +34890,46 @@ function summaryFacts(app, it, s) {
   ];
 }
 
+/** v3.54.0: the least thickness of Table (6-3), rounded up to 10 mm. */
+function feSlabLeastThickness(item) {
+  const g = item.geometry || {};
+  if (!item.fe || !g.panelType) return null;
+  const m = feThicknessMin(item.fe, g, (item.materials || {}).fy);
+  if (!m || !(m.tMin > 0)) return null;
+  return { ...m, tReq: Math.ceil(m.tMin / 10 - 1e-9) * 10 };
+}
+
+/**
+ * Choosing the panel type fills the thickness with the least of Table (6-3);
+ * a thickness below it, entered or left by another change, is raised to it.
+ * A thickness above it is the engineer's and stays.
+ */
+function feSlabThicknessRule(prev, next) {
+  const m = feSlabLeastThickness(next);
+  if (!m) return { item: next, raised: null };
+  const g = next.geometry;
+  const t = Number(g.t);
+  const panelChanged = !prev || (prev.geometry || {}).panelType !== g.panelType;
+  const blank = g.t === '' || g.t === null || g.t === undefined || !(t > 0);
+  const label = `L_n/${m.denom} = ${Math.round(m.gov.Ln)}/${m.denom} = ${m.tMin.toFixed(0)} mm, rounded up to ${m.tReq} mm`;
+  if ((panelChanged || blank) && t !== m.tReq) {
+    return { item: { ...next, geometry: { ...g, t: m.tReq } }, raised: { from: g.t, to: m.tReq, auto: true,
+      reason: `Thickness filled with the least of ECP 203-2020 Table (6-3) for the panel chosen: ${label}.`,
+      message: `Thickness set to ${m.tReq} mm, the least of Table (6-3) (${label}). It may be increased, not reduced.` } };
+  }
+  if (t < m.tReq - 1e-9) {
+    return { item: { ...next, geometry: { ...g, t: m.tReq } }, raised: { from: g.t, to: m.tReq, auto: false,
+      reason: `Thickness ${t} mm is below the least of ECP 203-2020 Table (6-3) (${label}); held at ${m.tReq} mm.`,
+      message: `${t} mm is below the least thickness of Table (6-3), ${m.tReq} mm (${label}). The thickness is held at ${m.tReq} mm.` } };
+  }
+  return { item: next, raised: null };
+}
+
+function feThicknessHint(it, u) {
+  const m = feSlabLeastThickness(it);
+  return m ? `Least by ECP 203-2020 Table (6-3): ${formatWithUnit(m.tReq, 'length', u)} (L_n/${m.denom}). It may be increased, not reduced.` : 'Choose the panel type below: the least thickness of Table (6-3) is filled in.';
+}
+
 function designerScreen(app, itemId) {
   const host = h('div');
   let showSteps = false;
@@ -34217,9 +34940,16 @@ function designerScreen(app, itemId) {
 
   function mutate(fn, { audit, reason } = {}) {
     let withdrawal = null;
+    let raised = null;
     app.store.update((s) => {
       const idx = s.project.items.findIndex((i) => i.id === itemId);
-      const next = fn({ ...s.project.items[idx] });
+      const prev = s.project.items[idx];
+      let next = fn({ ...prev });
+      // v3.54.0: the flat-slab thickness follows Table (6-3) and is held at it.
+      if (next && next.kind === 'feslab') {
+        const r = feSlabThicknessRule(prev, next);
+        next = r.item; raised = r.raised;
+      }
       const edit = applyItemEdit(next, reason);
       s.project.items[idx] = edit.item;
       withdrawal = edit.audit;
@@ -34228,9 +34958,25 @@ function designerScreen(app, itemId) {
     // The withdrawal of a signature is its own record, separate from whatever
     // the edit itself was, so the log reads as two facts and not one.
     if (withdrawal) app.audit.append({ ...withdrawal, kind: AUDIT_KINDS.SIGNATURE_WITHDRAWN, entity: itemLabel(item()) });
+    if (raised) {
+      app.audit.append({
+        kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(item()), entityId: itemId, field: 'geometry.t',
+        from: raised.from === '' ? 'blank' : String(raised.from), to: String(raised.to),
+        reason: raised.reason, actor: app.actorName(),
+      });
+      toast(raised.message, raised.auto ? 'ok' : 'err');
+    }
     recalc();
     render();
   }
+
+  // Edits made on the slab plan and the punching plan, logged.
+  const feEdit = (fn, meta) => mutate(fn, {
+    audit: {
+      kind: AUDIT_KINDS.ITEM_FIELD, entity: itemLabel(item()), entityId: itemId,
+      field: `geometry.${meta.field}`, from: meta.from, to: meta.to, reason: meta.reason, actor: app.actorName(),
+    },
+  });
 
   function recalc({ explicit = false } = {}) {
     // v3.46.0: a recalculation that replaces a stale result is logged with
@@ -34593,10 +35339,11 @@ function designerScreen(app, itemId) {
             // goes when the count goes, along with the reinforcement grade.
             !hasBars(it) ? null : field({
               label: `Bar diameter (${L('length')})`, id: 'in-dbar', ident: true,
-              control: numberInput({
-                unit: L('length'),
-                id: 'in-dbar', value: fromBase(g.rebar.dia, 'length', u), min: 0,
-                onCommit: (v) => mutate((x) => ({ ...x, geometry: { ...x.geometry, rebar: { ...x.geometry.rebar, dia: toBase(v, 'length', u) } } })),
+              // v3.54.0: chosen from the list of bar diameters.
+              control: select({
+                id: 'in-dbar', value: g.rebar.dia ? String(g.rebar.dia) : '',
+                placeholder: 'Choose…', options: barDiameterOptions(u, g.rebar.dia),
+                onChange: (v) => mutate((x) => ({ ...x, geometry: { ...x.geometry, rebar: { ...x.geometry.rebar, dia: Number(v) || 0 } } })),
               }),
             }),
           ) }),
@@ -35014,8 +35761,9 @@ function designerScreen(app, itemId) {
     });
 
     // v3.52.0: the plan of a slab designed from the model.
-    const feMap = it.kind === 'feslab' ? feSlabMapSheet(app, it, res) : null;
-    host.replaceChildren(...[staleBanner, verdict, feMap, inputs, checksSheet, assumptions, comments].filter(Boolean));
+    const feMap = it.kind === 'feslab' ? feSlabMapSheet(app, it, res, feEdit) : null;
+    const fePunch = it.kind === 'feslab' ? fePunchingSheet(app, it, res, feEdit) : null;
+    host.replaceChildren(...[staleBanner, verdict, feMap, fePunch, inputs, checksSheet, assumptions, comments].filter(Boolean));
   }
 
   if (!item().result) recalc();
@@ -35202,6 +35950,19 @@ function renderField(it, f, u, mutate, who = {}, problems = []) {
     }));
   }
 
+  // v3.54.0: a bar diameter is chosen from the list, never typed.
+  if (isBarDiameterPath(f.path)) {
+    return field(withError({
+      label: `${f.label} (${symbolFor(u, 'length')})`, id,
+      control: select({
+        id, value: raw === '' || raw === null || raw === undefined ? '' : String(raw),
+        placeholder: f.optional ? 'None' : 'Choose…',
+        options: barDiameterOptions(u, raw),
+        onChange: (v) => mutate((x) => { const next = { ...x }; setPath(next, f.path, v === '' ? '' : Number(v)); return next; }),
+      }),
+    }));
+  }
+
   if (f.options) {
     return field(withError({
       label: f.label, id,
@@ -35228,7 +35989,7 @@ function renderField(it, f, u, mutate, who = {}, problems = []) {
     // corresponds to is named in MPa everywhere, so the MPa value is shown too.
     hint: f.dim === 'stress' && symbolFor(u, 'stress') !== 'MPa' && Number(raw) > 0
       ? formatStrength(Number(raw), u)
-      : null,
+      : (it.kind === 'feslab' && f.path === 'geometry.t' ? feThicknessHint(it, u) : null),
     control: numberInput({
       unit: f.dim ? symbolFor(u, f.dim) : '',
       id,
@@ -37349,6 +38110,19 @@ function groupScreen(app, itemId) {
           });
         }
 
+        // v3.54.0: a bar diameter is chosen from the list, never typed.
+        if (isBarDiameterPath(f.path)) {
+          return field({
+            label: `${f.label} (${symbolFor(u, 'length')})`, id,
+            control: select({
+              id, value: raw === '' || raw === null || raw === undefined ? '' : String(raw),
+              placeholder: f.optional ? 'None' : 'Choose…',
+              options: barDiameterOptions(u, raw),
+              onChange: (v) => write(f.path, v === '' ? '' : Number(v)),
+            }),
+          });
+        }
+
         if (f.options) {
           return field({
             label: f.label, id,
@@ -39068,7 +39842,7 @@ function publicApi(app) {
     // core services
     createProject, validateProject, issueRevision,
     rcBarLayout, rcTiedBars, rcBarRows,
-    buildFeSlab, slabCandidates, shellToGlobal, woodArmer, feDesignMoments, columnStacks, columnPosition, createFeSlabItem,
+    buildFeSlab, slabCandidates, shellToGlobal, woodArmer, feDesignMoments, columnStacks, columnPosition, createFeSlabItem, feSuggestAdd, feThicknessMin, feAddZones, faceMoments, migrateFeSlab,
     createItem, createBeamItem, createColumnItem, runCfst, runBeam, runColumn, runDesign, sectionProperties, generateAssumptions,
     columnSection, footingSection, slabSection, combinedSection, createFootingItem, createSlabItem, createCombinedItem, runFooting, runSlab, runCombined, runPlateGirder, plateSection, createPlateGirderItem, runRetainingWall, wallGeometry, createWallItem, runSteelBeam, steelBeamSection, createSteelBeamItem, runDoubleChannel, createDoubleChannelItem, createSteelColumnItem,
     CHANNEL_SECTIONS, channelByName, channelOptions, doubleChannelSection, PAIRING, codeForElement, ECP203_COL_DATA,
