@@ -263,9 +263,14 @@ const BAR_DIAMETERS = [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 32];
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.54.3';
+const PLATFORM_VERSION = '3.54.4';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.54.4',
+    date: '2026-10-17',
+    notes: "Flat slab: a slab saved or imported with a blank mesh diameter — one created before v3.54.3 — opens with Ø10, as a new slab does, and its number per metre is filled at the least steel once the reinforcement grade is known. No calculation changed.",
+  },
   {
     version: '3.54.3',
     date: '2026-10-17',
@@ -971,8 +976,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "689";
-const RAW_TIME = "2026-10-17T08:56:18.726Z";
+const RAW_NUMBER = "690";
+const RAW_TIME = "2026-10-17T09:02:52.624Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -4444,6 +4449,10 @@ function migrateFeSlab(it) {
     delete g.extraDia; delete g.extraSp; delete g.extraExtent; changed = true;
   }
   if ('avgWidth' in g) { delete g.avgWidth; changed = true; }
+  // v3.54.4: a mesh saved without a diameter takes Ø10, as a new slab does.
+  for (const k of ['botDiaX', 'botDiaY', 'topDiaX', 'topDiaY']) {
+    if (g[k] === '' || g[k] === null || g[k] === undefined) { g[k] = 10; changed = true; }
+  }
   if (!g.add) { g.add = {}; changed = true; }
   if (!g.drops) { g.drops = {}; changed = true; }
   if (g.addDiaDefault === undefined) { g.addDiaDefault = 12; changed = true; }
@@ -35847,6 +35856,22 @@ function feThicknessHint(it, u) {
 
 function designerScreen(app, itemId) {
   const host = h('div');
+  // v3.54.4: a flat slab opened with a blank mesh takes Ø10, and its number
+  // per metre at the least steel where the reinforcement grade is known.
+  {
+    const it0 = app.store.state.project && app.store.state.project.items.find((i) => i.id === itemId);
+    if (it0 && it0.kind === 'feslab') {
+      const g0 = it0.geometry || {};
+      const blank = (v) => v === '' || v === null || v === undefined;
+      if (FE_LAYERS.some((L) => blank(g0[L.dia]) || (blank(g0[L.n]) && Number((it0.materials || {}).fy) > 0))) {
+        app.store.update((s) => {
+          const idx = s.project.items.findIndex((i) => i.id === itemId);
+          const cur = s.project.items[idx];
+          s.project.items[idx] = feSlabMeshRule({ ...cur, geometry: { ...cur.geometry } }, { ...cur, geometry: { ...cur.geometry } }).item;
+        });
+      }
+    }
+  }
   let showSteps = false;
 
   const project = () => app.store.state.project;
@@ -38379,6 +38404,9 @@ function importScreen(app) {
         const existing = s.project.items.find((x) => x.kind === 'feslab' && x.imported && x.imported.section === name);
         if (existing) {
           Object.assign(existing, { fe, imported, status: 'Draft' });
+          // v3.54.4: a blank mesh diameter takes Ø10.
+          existing.geometry = { ...existing.geometry };
+          for (const k of ['botDiaX', 'botDiaY', 'topDiaX', 'topDiaY']) if (existing.geometry[k] === '' || existing.geometry[k] == null) existing.geometry[k] = 10;
           updated.push(existing);
           continue;
         }
