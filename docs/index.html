@@ -263,9 +263,14 @@ const BAR_DIAMETERS = [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 32];
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.54.2';
+const PLATFORM_VERSION = '3.54.3';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.54.3',
+    date: '2026-10-17',
+    notes: "Flat slab. The thickness is the model's; the panel type no longer changes it. A model thickness below ECP 203-2020 Table (6-3) stays, the field says so and the thickness check fails; an entry below the least is held at it. A new slab starts with Ø10 meshes, the number per metre filled at the least steel 0,6/f_y of §6-2-1-2-3 and not fewer than five, once the reinforcement grade is chosen; both may be changed. A REGENERATE icon beside the four layer icons on the moments plan designs the added bars of every layer that needs them — from the default diameter up, at ½, 1, 1½ or 2 times the mesh count, within §7-3-3-1 — and shows red whenever anything the steel depends on has changed since: thickness, cover, aggregate, concrete, reinforcement, meshes, drop panels, the load factor or the model with its columns. The added bars are changed on the plan only; the inputs below hold the slab, the materials and the meshes. Flat-slab results change only through these inputs; no other calculation changed.",
+  },
   {
     version: '3.54.2',
     date: '2026-10-17',
@@ -966,8 +971,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "685";
-const RAW_TIME = "2026-10-16T21:28:56.553Z";
+const RAW_NUMBER = "689";
+const RAW_TIME = "2026-10-17T08:56:18.726Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -1786,6 +1791,12 @@ const UI = {
   'Spacing': 'التباعد',
   'Top mesh': 'الشبكة العلوية',
   'Slab plan': 'مسقط البلاطة',
+  'REGENERATE': 'إعادة التصميم',
+  'Added bars designed for every layer.': 'تم تصميم الحديد الإضافي لكل الطبقات.',
+  'Something the steel depends on has changed: design the added bars again': 'تغيّر شيء يعتمد عليه الحديد: أعد تصميم الحديد الإضافي',
+  'The added bars are designed on the present inputs': 'الحديد الإضافي مصمم على المدخلات الحالية',
+  'Added bars regenerated on the moments plan for the steel each layer needs': 'تمت إعادة تصميم الحديد الإضافي من مسقط العزوم',
+  'From the model. Choose the panel type: the least thickness of Table (6-3) is checked against it.': 'من النموذج. اختر نوع الباكية: يُراجع أدنى سمك من جدول (6-3).',
   'Deflection': 'الترخيم',
   'Within §6-2-5-2(د).': 'مستوفٍ لبند 6-2-5-2(د).',
   'Service combination': 'تركيبة التشغيل',
@@ -6813,15 +6824,17 @@ function createFeSlabItem(patch = {}) {
   base.kind = 'feslab';
   base.geometry = {
     t: '', cover: '',
-    botDiaX: '', botNX: '', botDiaY: '', botNY: '',
-    topDiaX: '', topNX: '', topDiaY: '', topNY: '',
+    // v3.54.3: Ø10 by default; the number per metre is set at the least
+    // steel once the reinforcement grade is known.
+    botDiaX: 10, botNX: '', botDiaY: 10, botNY: '',
+    topDiaX: 10, topNX: '', topDiaY: 10, topNY: '',
     panelType: '', addDiaDefault: 12, agg: '',
     // v3.54.2: deflection — the service and permanent combinations, whether
     // the model used cracked stiffness, and the time factor ξ.
     defCombo: '', defPerm: '', defCracked: false, defXi: 2,
     // v3.54.0: added bars per layer { bx|by|tx|ty: { dia, n } } and drop
     // panels per column joint { lx, ly, h }, both set on the slab plan.
-    add: {}, drops: {},
+    add: {}, drops: {}, addFor: '',
   };
   base.materials = { fcu: '', fy: '' };
   base.actions = {};
@@ -27827,6 +27840,8 @@ a{color:var(--tg-red-deep)}
 .tg-felayers{display:flex;gap:4px;flex-wrap:wrap}
 .tg-felayer{display:inline-flex;flex-direction:column;align-items:center;gap:2px;min-width:58px;padding:4px 6px;border:1px solid var(--tg-rule);background:#fff;color:var(--tg-ink-60,#555);font:700 10px/1.1 inherit;letter-spacing:.04em;cursor:pointer}
 .tg-felayer:hover{color:var(--tg-ink,#111)}
+.tg-feregen{margin-left:10px}
+.tg-feregen.is-stale{border-color:#c62828;color:#fff;background:#c62828}
 .tg-felayer.is-on{border-color:var(--tg-red);color:var(--tg-red);background:rgba(200,30,30,.06)}
 .tg-fetabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .tg-fetab{position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:3px;min-width:96px;padding:8px 12px;border:1px solid var(--tg-rule);background:#fff;color:var(--tg-ink-60,#555);font:700 11px/1.1 inherit;letter-spacing:.06em;cursor:pointer}
@@ -30256,6 +30271,58 @@ function layerButtons(app, key) {
   }));
 }
 
+/**
+ * v3.54.3: what the added bars were designed on. Anything that moves the steel
+ * required — thickness, cover, aggregate, concrete, reinforcement, the meshes,
+ * the drop panels, the model with its columns — changes it; the added bars
+ * themselves do not.
+ */
+function feAddSignature(item, res) {
+  const g = item.geometry || {};
+  const m = item.materials || {};
+  const pick = ['t', 'cover', 'agg', 'botDiaX', 'botNX', 'botDiaY', 'botNY', 'topDiaX', 'topNX', 'topDiaY', 'topNY'];
+  return hashOf({
+    g: pick.map((k) => g[k]), drops: g.drops || {}, fcu: m.fcu, fy: m.fy,
+    fe: designInputs(item).fe, factor: (res && res.ctx && res.ctx.factor) || null,
+  });
+}
+
+/** Added bars for every layer, from the default diameter up, for the steel each needs. */
+function feRegenerateAdd(item, res) {
+  const g = item.geometry || {};
+  const add = {}; const short = []; const beyond = [];
+  for (const LD of FE_LAYERS) {
+    const R = res.scratch.feLayers[LD.key];
+    if (!R) continue;
+    if ((R.req || []).some((r) => r < 0)) beyond.push(LD.label);
+    if (!(R.addNeed > 0)) continue;
+    const sgt = feSuggestAddAuto(Number(g[LD.n]) || 0, Number(g[LD.dia]) || 0, Number(g.addDiaDefault) || 12, R.addNeed, g.agg);
+    if (sgt) add[LD.key] = { dia: sgt.dia, n: sgt.n }; else short.push(LD.label);
+  }
+  return { add, short, beyond };
+}
+
+function regenButton(app, item, res, onEdit) {
+  const g = item.geometry || {};
+  const sig = feAddSignature(item, res);
+  const anyNeed = FE_LAYERS.some((LD) => res.scratch.feLayers[LD.key] && res.scratch.feLayers[LD.key].addNeed > 0);
+  const anyAdd = Object.keys(g.add || {}).length > 0;
+  const stale = g.addFor !== sig && (anyNeed || anyAdd);
+  const b = h('button', { type: 'button', id: 'feadd-regen', class: `tg-felayer tg-feregen${stale ? ' is-stale' : ''}`,
+    title: stale ? 'Something the steel depends on has changed: design the added bars again' : 'The added bars are designed on the present inputs',
+    disabled: !onEdit,
+    onClick: () => {
+      const r = feRegenerateAdd(item, res);
+      onEdit((x) => ({ ...x, geometry: { ...x.geometry, add: r.add, addFor: sig } }),
+        { field: 'add', from: JSON.stringify(g.add || {}), to: JSON.stringify(r.add), reason: 'Added bars regenerated on the moments plan for the steel each layer needs' });
+      const msg = [r.short.length ? `No diameter up to twice the mesh count covers ${r.short.join(', ')}: increase the mesh, the thickness or add a drop panel.` : '',
+        r.beyond.length ? `${r.beyond.join(', ')}: some joints are beyond (c/d)max even with compression steel; added bars do not help there.` : ''].filter(Boolean).join(' ');
+      toast(msg || 'Added bars designed for every layer.', msg ? 'err' : 'ok');
+    } });
+  b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 4v5h-5" stroke="currentColor" stroke-width="2" fill="none"/></svg><span>REGENERATE</span>';
+  return b;
+}
+
 /** The moments plan, with the added bars of each layer. */
 function momentsBody(app, item, res, onEdit) {
   const key = app.feMapLayer || 'bx';
@@ -30296,7 +30363,7 @@ function momentsBody(app, item, res, onEdit) {
   const nDrops = Object.keys(feDrops(g)).length;
   return h('div', null,
     h('p', { class: 'tg-felede' }, `Each element shows the worst ratio of steel required to steel provided at its joints, the drop panels counted. Dashed: where the mesh is short. Solid blue: the reach of the added bars with their anchorage. Click an unsafe area to choose its added bars.`),
-    layerButtons(app, key),
+    h('div', { class: 'tg-felayers' }, layerButtons(app, key), regenButton(app, item, res, onEdit)),
     h('div', { class: 'tg-femap' }, frame),
     h('div', { class: 'tg-femap__legend' },
       ...(style === 'three' ? LEGEND3 : LEGEND).map(([c, t]) => h('span', null, swatch(c), t)),
@@ -30721,11 +30788,6 @@ const FORM_SPECS = {
           { path: 'geometry.topNX', label: 'Bars in X, number per metre (at least 5)', min: 5 },
           { path: 'geometry.topDiaY', label: 'Bars in Y, diameter', dim: 'length' },
           { path: 'geometry.topNY', label: 'Bars in Y, number per metre (at least 5)', min: 5 },
-        ],
-      },
-      {
-        key: 'fe.add', title: 'Added bars (chosen on the slab plan)', fields: [
-          { path: 'geometry.addDiaDefault', label: 'Diameter offered first for added bars', optional: true },
         ],
       },
     ],
@@ -35710,23 +35772,18 @@ function feSlabLeastThickness(item) {
 }
 
 /**
- * Choosing the panel type fills the thickness with the least of Table (6-3);
- * a thickness below it, entered or left by another change, is raised to it.
- * A thickness above it is the engineer's and stays.
+ * v3.54.3: the thickness comes from the model. An entry below the least of
+ * Table (6-3) is held at it; a model thickness below it stays and the
+ * thickness check fails, saying so.
  */
 function feSlabThicknessRule(prev, next) {
   const m = feSlabLeastThickness(next);
   if (!m) return { item: next, raised: null };
   const g = next.geometry;
   const t = Number(g.t);
-  const panelChanged = !prev || (prev.geometry || {}).panelType !== g.panelType;
-  const blank = g.t === '' || g.t === null || g.t === undefined || !(t > 0);
   const label = `L_n/${m.denom} = ${Math.round(m.gov.Ln)}/${m.denom} = ${m.tMin.toFixed(0)} mm, rounded up to ${m.tReq} mm`;
-  if ((panelChanged || blank) && t !== m.tReq) {
-    return { item: { ...next, geometry: { ...g, t: m.tReq } }, raised: { from: g.t, to: m.tReq, auto: true,
-      reason: `Thickness filled with the least of ECP 203-2020 Table (6-3) for the panel chosen: ${label}.`,
-      message: `Thickness set to ${m.tReq} mm, the least of Table (6-3) (${label}). It may be increased, not reduced.` } };
-  }
+  const edited = prev && (prev.geometry || {}).t !== g.t;
+  if (!edited) return { item: next, raised: null };
   if (t < m.tReq - 1e-9) {
     return { item: { ...next, geometry: { ...g, t: m.tReq } }, raised: { from: g.t, to: m.tReq, auto: false,
       reason: `Thickness ${t} mm is below the least of ECP 203-2020 Table (6-3) (${label}); held at ${m.tReq} mm.`,
@@ -35745,6 +35802,21 @@ function feSlabMeshRule(prev, next) {
   const pg = (prev && prev.geometry) || {};
   const g = { ...next.geometry };
   let changed = false;
+  // v3.54.3: a blank mesh is filled at the least steel, §6-2-1-2-3:
+  // Ø10, at the number per metre that gives 0,6/f_y of the section and not
+  // fewer than five.
+  const fy = Number((next.materials || {}).fy) || 0; const tt = Number(g.t) || 0;
+  for (const L of FE_LAYERS) {
+    const blankD = g[L.dia] === '' || g[L.dia] === null || g[L.dia] === undefined;
+    const blankN = g[L.n] === '' || g[L.n] === null || g[L.n] === undefined;
+    if (blankD) { g[L.dia] = 10; changed = true; }
+    if (blankN && fy > 0 && tt > 0) {
+      const A = Math.PI * Number(g[L.dia]) ** 2 / 4;
+      g[L.n] = Math.max(5, Math.ceil(((0.6 / fy) * 1000 * tt) / A - 1e-9));
+      changed = true;
+    }
+  }
+  const filled = changed;
   for (const f of ['bot', 'top']) {
     for (const k of ['Dia', 'N']) {
       const X = `${f}${k}X`; const Y = `${f}${k}Y`;
@@ -35763,12 +35835,14 @@ function feSlabMeshRule(prev, next) {
       if (g[L.n] !== pg[L.n]) { g[L.n] = pg[L.n]; changed = true; }
     }
   }
-  return { item: changed ? { ...next, geometry: g } : next, message: bad.length ? bad.join(' ') : null };
+  return { item: changed ? { ...next, geometry: g } : next, message: bad.length ? bad.join(' ') : null, filled };
 }
 
 function feThicknessHint(it, u) {
   const m = feSlabLeastThickness(it);
-  return m ? `Least by ECP 203-2020 Table (6-3): ${formatWithUnit(m.tReq, 'length', u)} (L_n/${m.denom}). It may be increased, not reduced.` : 'Choose the panel type below: the least thickness of Table (6-3) is filled in.';
+  if (!m) return 'From the model. Choose the panel type: the least thickness of Table (6-3) is checked against it.';
+  const t = Number((it.geometry || {}).t) || 0;
+  return `From the model. Least by ECP 203-2020 Table (6-3): ${formatWithUnit(m.tReq, 'length', u)} (L_n/${m.denom})${t < m.tReq - 1e-9 ? ' — the model thickness is below it, and the thickness check fails' : ''}. It may be increased, not reduced below it.`;
 }
 
 function designerScreen(app, itemId) {
@@ -40699,7 +40773,7 @@ function publicApi(app) {
     // core services
     createProject, validateProject, issueRevision,
     rcBarLayout, rcTiedBars, rcBarRows,
-    buildFeSlab, slabCandidates, shellToGlobal, woodArmer, feDesignMoments, columnStacks, columnPosition, createFeSlabItem, feSuggestAdd, feThicknessMin, feAddZones, faceMoments, migrateFeSlab, feDropMinimum, fePunchingWith, feSuggestAddAuto, feBarsFit, feMaxBarsPerMetre, columnPanels, feDeflection, feDeflectionThickness, feDevLength, FE_BAR_LENGTHS,
+    buildFeSlab, slabCandidates, shellToGlobal, woodArmer, feDesignMoments, columnStacks, columnPosition, createFeSlabItem, feSuggestAdd, feThicknessMin, feAddZones, faceMoments, migrateFeSlab, feDropMinimum, fePunchingWith, feSuggestAddAuto, feBarsFit, feMaxBarsPerMetre, columnPanels, feDeflection, feDeflectionThickness, feDevLength, FE_BAR_LENGTHS, feSlabMeshRule, feSlabThicknessRule,
     createItem, createBeamItem, createColumnItem, runCfst, runBeam, runColumn, runDesign, sectionProperties, generateAssumptions,
     columnSection, footingSection, slabSection, combinedSection, createFootingItem, createSlabItem, createCombinedItem, runFooting, runSlab, runCombined, runPlateGirder, plateSection, createPlateGirderItem, runRetainingWall, wallGeometry, createWallItem, runSteelBeam, steelBeamSection, createSteelBeamItem, runDoubleChannel, createDoubleChannelItem, createSteelColumnItem,
     CHANNEL_SECTIONS, channelByName, channelOptions, doubleChannelSection, PAIRING, codeForElement, ECP203_COL_DATA,
