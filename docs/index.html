@@ -263,9 +263,14 @@ const BAR_DIAMETERS = [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 32];
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.54.6';
+const PLATFORM_VERSION = '3.54.7';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.54.7',
+    date: '2026-10-21',
+    notes: "Flat slab. One-way shear no longer counts the slab within d/2 of the edge of a drop panel: that slab lies inside the punching critical section at the drop edge (ECP 203-2020 §4-2-2-3, Figure 4-13) and is checked there, as the sheet now says. A slab opened with a mesh below the least steel 0,6/f_y — saved before the thickness was raised — is raised to it on opening. Design items: the element list, Add design item, Import from SAP2000, Calculation sheets and Delete selected sit in one row above the list. Flat-slab results change; no other calculation changed.",
+  },
   {
     version: '3.54.6',
     date: '2026-10-21',
@@ -986,8 +991,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "702";
-const RAW_TIME = "2026-10-20T21:43:44.299Z";
+const RAW_NUMBER = "707";
+const RAW_TIME = "2026-10-20T21:57:39.339Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -1806,6 +1811,7 @@ const UI = {
   'Spacing': 'التباعد',
   'Top mesh': 'الشبكة العلوية',
   'Slab plan': 'مسقط البلاطة',
+  'Model .s2k with its results, or a results .csv': 'نموذج .s2k بنتائجه، أو ملف نتائج .csv',
   'Calculation sheets': 'النوتات الحسابية',
   'Back to the design items': 'رجوع لبنود التصميم',
   'Select every item': 'تحديد كل البنود',
@@ -17492,10 +17498,17 @@ function ecp203_feShear(ctx) {
   const D = feDepths(g);
   const qcu = ECP203_FESLAB_DATA.qcuSlab.value * Math.sqrt((Number(mat.fcu) || 0) / ECP203_DATA.gammaC.value);
   const stacks = columnStacks(fe);
+  const drops = feDrops(g);
+  let inDrops = 0;
   const excluded = (p) => {
     for (const s of stacks) {
       const c = fe.nodes[s.node];
       if (Math.abs(p.x - c.x) <= s.cx / 2 + D.mean / 2 + 1e-6 && Math.abs(p.y - c.y) <= s.cy / 2 + D.mean / 2 + 1e-6) return true;
+      // v3.54.6: a drop panel is a loaded area of its own for punching, its
+      // critical section at d/2 beyond its edge (§4-2-2-3, Figure 4-13); the
+      // slab within that section is in the punching check, not in this one.
+      const dp = drops[s.joint];
+      if (dp && Math.abs(p.x - c.x) <= dp.lx / 2 + D.mean / 2 + 1e-6 && Math.abs(p.y - c.y) <= dp.ly / 2 + D.mean / 2 + 1e-6) { inDrops += 1; return true; }
     }
     for (const b of fe.beams || []) {
       const vx = b.x2 - b.x1; const vy = b.y2 - b.y1; const L2 = vx * vx + vy * vy;
@@ -17533,7 +17546,8 @@ function ecp203_feShear(ctx) {
       code: ECP_FE, clause: '4-2-2-2', symbol: 'q_u',
       description: 'Greatest shear stress in the slab outside the supports',
       expression: 'q_u = V/d per unit width, V the shell shear on a face normal to the bars',
-      substitution: worst ? `${feAt(fe, worst.i)}, ${worst.combo}, V_${worst.dir.toLowerCase()} → q_u = ${feFmt(worst.q, 3)} N/mm²; ${skipped} joints within d/2 of a column or a beam face are left to the punching check and to the beams` : '—',
+      substitution: worst ? `${feAt(fe, worst.i)}, ${worst.combo}, V_${worst.dir.toLowerCase()} → q_u = ${feFmt(worst.q, 3)} N/mm²; ${skipped} joints within d/2 of a column, a drop panel or a beam face are left to the punching check and to the beams${inDrops ? ` (${inDrops} of them within d/2 of a drop panel's edge)` : ''}` : '—',
+      note: inDrops ? 'The slab within d/2 of the edge of a drop panel lies inside the punching critical section at the drop edge (§4-2-2-3(2)(a), Figure 4-13) and is checked there; it is not checked again here as one-way shear. This is the reading applied, recorded as such.' : null,
       value: worst ? worst.q : null, dimension: 'stress',
     }),
   ];
@@ -28449,6 +28463,8 @@ body.tg-translating .tg-board *{cursor:help}
 .tg-importbtn{display:grid;justify-items:center;gap:2px}
 .tg-addbar{display:flex;gap:6px;align-items:center}
 .tg-addbar select{min-width:150px}
+.tg-itemsbar{flex-wrap:wrap;justify-content:flex-end;margin:0 0 12px}
+.tg-itemsbar .tg-btn{white-space:nowrap}
 .tg-importbtn span{font-size:10px;color:var(--tg-ink-40);font-family:var(--tg-font-ident)}
 
 .tg-trial{border:1px solid var(--tg-rule);padding:12px;margin-bottom:14px;background:#FAFAF7}
@@ -35789,22 +35805,19 @@ function itemsScreen(app) {
     host.replaceChildren(sheet({
       title: 'Design items',
       lede: 'Each item carries its own code, revision, designer and checker. Status falls back to draft whenever an input changes.',
-      actions: [
-        button(selected.size ? `Calculation sheets (${selected.size})` : 'Calculation sheets', { id: 'items-sheets', disabled: !selected.size,
-          title: selected.size ? 'The calculation sheets of the items ticked, one after another, to print together' : 'Tick the items whose sheets you want',
-          onClick: () => app.openSheets(items.filter((x) => selected.has(x.id)).map((x) => x.id)) }),
-        selected.size
-          ? button(`Delete ${selected.size} selected`, { variant: 'danger', onClick: () => removeItems([...selected]) })
-          : null,
-        h('div', { class: 'tg-importbtn' },
-          button('Import from SAP2000', { variant: 'ghost', onClick: () => app.navigate('import') }),
-          h('span', null, 'model .s2k + results .csv')),
-        h('div', null,
-          h('div', { class: 'tg-addbar' }, elementPicker(), button('Add design item', { onClick: addItem })),
-          scopeCardFor ? scopeCard(findElement(scopeCardFor)) : null),
-      ],
       body: items.length
         ? h('div', null,
+          // v3.54.7: one row under the title — choose and add, import, then
+          // what acts on the ticked items.
+        h('div', null,
+          h('div', { class: 'tg-addbar tg-itemsbar' },
+            elementPicker(), button('Add design item', { onClick: addItem }),
+            button('Import from SAP2000', { variant: 'ghost', title: 'Model .s2k with its results, or a results .csv', onClick: () => app.navigate('import') }),
+            button(selected.size ? `Calculation sheets (${selected.size})` : 'Calculation sheets', { id: 'items-sheets', disabled: !selected.size,
+              title: selected.size ? 'The calculation sheets of the items ticked, one after another, to print together' : 'Tick the items whose sheets you want',
+              onClick: () => app.openSheets(items.filter((x) => selected.has(x.id)).map((x) => x.id)) }),
+            selected.size ? button(`Delete ${selected.size} selected`, { variant: 'danger', onClick: () => removeItems([...selected]) }) : null),
+          scopeCardFor ? scopeCard(findElement(scopeCardFor)) : null),
           table({
             // The register is the one table that grows without limit — a real
             // project carries hundreds of items — so it is the one that gets
@@ -36029,7 +36042,9 @@ function designerScreen(app, itemId) {
     if (it0 && it0.kind === 'feslab') {
       const g0 = it0.geometry || {};
       const blank = (v) => v === '' || v === null || v === undefined;
-      if (FE_LAYERS.some((L) => blank(g0[L.dia]) || (blank(g0[L.n]) && Number((it0.materials || {}).fy) > 0))) {
+      const fy0 = Number((it0.materials || {}).fy) || 0; const t0 = Number(g0.t) || 0;
+      const short = fy0 > 0 && t0 > 0 && FE_LAYERS.some((L) => Number(g0[L.n]) > 0 && Number(g0[L.n]) * Math.PI * Number(g0[L.dia]) ** 2 / 4 + 1e-6 < (0.6 / fy0) * 1000 * t0);
+      if (short || FE_LAYERS.some((L) => blank(g0[L.dia]) || (blank(g0[L.n]) && fy0 > 0))) {
         app.store.update((s) => {
           const idx = s.project.items.findIndex((i) => i.id === itemId);
           const cur = s.project.items[idx];
