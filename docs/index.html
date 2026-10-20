@@ -263,9 +263,14 @@ const BAR_DIAMETERS = [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 32];
 //   - recalculating is an explicit act that raises a NEW revision and shows
 //     exactly which numbers moved
 
-const PLATFORM_VERSION = '3.54.5';
+const PLATFORM_VERSION = '3.54.6';
 
 const VERSION_HISTORY = [
+  {
+    version: '3.54.6',
+    date: '2026-10-21',
+    notes: "Design items: a box above the list ticks every item or none, and Calculation sheets opens the sheets of the items ticked one after another, to print together — a group with one sheet per section, as its own Sheet button gives. Flat slab: a change of mesh is no longer refused because added bars designed on the old mesh would not fit beside it; those zones read red and REGENERATE asks to be pressed. A mesh that does not fit on its own is still refused (§7-3-3-1). REGENERATE first raises the mesh to the least steel where it is short and then designs the added bars on it, so the two no longer undo each other. No calculation changed.",
+  },
   {
     version: '3.54.5',
     date: '2026-10-17',
@@ -981,8 +986,8 @@ function buildRow(id, title, was, now) {
 // The tokens below are replaced by tools/bundle.mjs. Unbundled source keeps the
 // tokens, which is how the code detects it is running from src/ directly.
 
-const RAW_NUMBER = "698";
-const RAW_TIME = "2026-10-17T12:16:56.176Z";
+const RAW_NUMBER = "702";
+const RAW_TIME = "2026-10-20T21:43:44.299Z";
 
 const IS_BUNDLED = !RAW_NUMBER.startsWith('__');
 const BUILD_NUMBER = IS_BUNDLED ? Number(RAW_NUMBER) : 0;
@@ -1801,6 +1806,13 @@ const UI = {
   'Spacing': 'التباعد',
   'Top mesh': 'الشبكة العلوية',
   'Slab plan': 'مسقط البلاطة',
+  'Calculation sheets': 'النوتات الحسابية',
+  'Back to the design items': 'رجوع لبنود التصميم',
+  'Select every item': 'تحديد كل البنود',
+  'Clear the selection': 'إلغاء التحديد',
+  'Tick the items whose sheets you want': 'علّم على البنود المطلوب نوتاتها',
+  'The calculation sheets of the items ticked, one after another, to print together': 'النوتات الحسابية للبنود المعلّمة متتالية للطباعة معاً',
+  'No items were chosen.': 'لم يتم اختيار بنود.',
   'Weight —': 'الوزن —',
   'Estimate': 'تقديري',
   'No added bars.': 'لا يوجد حديد إضافي.',
@@ -30429,8 +30441,15 @@ function regenButton(app, item, res, onEdit) {
     title: stale ? 'Something the steel depends on has changed: design the added bars again' : 'The added bars are designed on the present inputs',
     disabled: !onEdit,
     onClick: () => {
-      const r = feRegenerateAdd(item, res);
-      onEdit((x) => ({ ...x, geometry: { ...x.geometry, add: r.add, addFor: sig } }),
+      // v3.54.6: the mesh is set first — raised to the least steel where it
+      // is short — and the added bars designed on it, not on the one before.
+      const norm = feSlabMeshRule(item, { ...item, geometry: { ...item.geometry } }).item;
+      const meshMoved = JSON.stringify(norm.geometry) !== JSON.stringify(item.geometry);
+      let res2 = res;
+      if (meshMoved) { try { res2 = runDesign(app.registry, norm); } catch (_) { res2 = res; } }
+      const r = feRegenerateAdd(norm, res2);
+      const sig2 = feAddSignature(norm, res2);
+      onEdit((x) => ({ ...x, geometry: { ...x.geometry, ...(meshMoved ? FE_LAYERS.reduce((o, L) => ({ ...o, [L.n]: norm.geometry[L.n], [L.dia]: norm.geometry[L.dia] }), {}) : {}), add: r.add, addFor: sig2 } }),
         { field: 'add', from: JSON.stringify(g.add || {}), to: JSON.stringify(r.add), reason: 'Added bars regenerated on the moments plan for the steel each layer needs' });
       const msg = [r.short.length ? `No diameter up to twice the mesh count covers ${r.short.join(', ')}: increase the mesh, the thickness or add a drop panel.` : '',
         r.beyond.length ? `${r.beyond.join(', ')}: some joints are beyond (c/d)max even with compression steel; added bars do not help there.` : ''].filter(Boolean).join(' ');
@@ -30438,6 +30457,69 @@ function regenButton(app, item, res, onEdit) {
     } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 4v5h-5" stroke="currentColor" stroke-width="2" fill="none"/></svg><span>REGENERATE</span>';
   return b;
+}
+
+/**
+ * v3.54.0. In each mesh the bars in Y follow the bars in X — diameter and
+ * number — while Y is blank or still the same as X was; once Y is set apart
+ * it keeps its own. A number per metre that leaves less than the clear
+ * distance of §7-3-3-1 between the bars of the layer is refused.
+ */
+function feSlabMeshRule(prev, next) {
+  const pg = (prev && prev.geometry) || {};
+  const g = { ...next.geometry };
+  let changed = false;
+  // v3.54.3: a blank mesh is filled at the least steel, §6-2-1-2-3:
+  // Ø10, at the number per metre that gives 0,6/f_y of the section and not
+  // fewer than five.
+  const fy = Number((next.materials || {}).fy) || 0; const tt = Number(g.t) || 0;
+  for (const L of FE_LAYERS) {
+    const blankD = g[L.dia] === '' || g[L.dia] === null || g[L.dia] === undefined;
+    const blankN = g[L.n] === '' || g[L.n] === null || g[L.n] === undefined;
+    if (blankD) { g[L.dia] = 10; changed = true; }
+    if (blankN && fy > 0 && tt > 0) {
+      const A = Math.PI * Number(g[L.dia]) ** 2 / 4;
+      g[L.n] = Math.max(5, Math.ceil(((0.6 / fy) * 1000 * tt) / A - 1e-9));
+      changed = true;
+    }
+  }
+  const filled = changed;
+  for (const f of ['bot', 'top']) {
+    for (const k of ['Dia', 'N']) {
+      const X = `${f}${k}X`; const Y = `${f}${k}Y`;
+      if (g[X] === pg[X]) continue;
+      const py = pg[Y];
+      if (py === '' || py === null || py === undefined || py === pg[X]) { g[Y] = g[X]; changed = true; }
+    }
+  }
+  // v3.54.5: never below the least steel. A mesh the thickness, the grade or
+  // its diameter has left short is raised to it; a number entered below it
+  // is set to it.
+  const bad = [];
+  if (fy > 0 && tt > 0) {
+    const asMin = (0.6 / fy) * 1000 * tt;
+    for (const L of FE_LAYERS) {
+      const A = Math.PI * Number(g[L.dia]) ** 2 / 4;
+      if (!(A > 0) || !(Number(g[L.n]) > 0)) continue;
+      if (Number(g[L.n]) * A + 1e-6 < asMin) {
+        const nMin = Math.max(5, Math.ceil(asMin / A - 1e-9));
+        bad.push(`${L.label}: ${g[L.n]} Ø${g[L.dia]} per metre = ${Math.round(Number(g[L.n]) * A)} mm²/m is below the least steel 0,6/f_y × 1000 × t = ${Math.round(asMin)} mm²/m (ECP 203-2020 §6-2-1-2-3); set to ${nMin} per metre.`);
+        g[L.n] = nMin; changed = true;
+      }
+    }
+  }
+  // v3.54.6: the mesh is refused only where it does not fit on its own.
+  // Added bars designed on the old mesh do not stand in its way: where they
+  // no longer fit, their zone reads red and REGENERATE asks to be pressed.
+  for (const L of FE_LAYERS) {
+    if (g[L.n] === pg[L.n] && g[L.dia] === pg[L.dia]) continue;
+    const fit = feBarsFit(g[L.n], g[L.dia], 0, 0, g.agg);
+    if (!fit.ok) {
+      bad.push(`${L.label}: ${fit.n} bars per metre leave ${Math.round(fit.clear)} mm between Ø${fit.dmax} bars, less than ${Math.round(fit.need)} mm (ECP 203-2020 §7-3-3-1); at most ${fit.max} per metre.`);
+      if (g[L.n] !== pg[L.n]) { g[L.n] = pg[L.n]; changed = true; }
+    }
+  }
+  return { item: changed ? { ...next, geometry: g } : next, message: bad.length ? bad.join(' ') : null, filled };
 }
 
 /** The moments plan, with the added bars of each zone. */
@@ -35708,6 +35790,9 @@ function itemsScreen(app) {
       title: 'Design items',
       lede: 'Each item carries its own code, revision, designer and checker. Status falls back to draft whenever an input changes.',
       actions: [
+        button(selected.size ? `Calculation sheets (${selected.size})` : 'Calculation sheets', { id: 'items-sheets', disabled: !selected.size,
+          title: selected.size ? 'The calculation sheets of the items ticked, one after another, to print together' : 'Tick the items whose sheets you want',
+          onClick: () => app.openSheets(items.filter((x) => selected.has(x.id)).map((x) => x.id)) }),
         selected.size
           ? button(`Delete ${selected.size} selected`, { variant: 'danger', onClick: () => removeItems([...selected]) })
           : null,
@@ -35733,7 +35818,14 @@ function itemsScreen(app) {
             searchLabel: 'Filter by number, name, status, code or verdict',
             caption: `${items.length} item${items.length === 1 ? '' : 's'}`,
             columns: [
-              { label: '', width: '38px', sortable: false, render: ({ it }) => {
+              { label: (() => {
+                // v3.54.6: select all, or none.
+                const all = items.length > 0 && items.every((x) => selected.has(x.id));
+                const box = h('input', { type: 'checkbox', id: 'items-all', title: all ? 'Clear the selection' : 'Select every item', ...(all ? { checked: true } : {}) });
+                box.indeterminate = !all && selected.size > 0;
+                box.addEventListener('change', () => { selected = box.checked ? new Set(items.map((x) => x.id)) : new Set(); render(); });
+                return box;
+              })(), width: '38px', sortable: false, render: ({ it }) => {
                 const box = h('input', { type: 'checkbox', checked: selected.has(it.id) });
                 box.addEventListener('change', () => {
                   if (box.checked) selected.add(it.id); else selected.delete(it.id);
@@ -35919,69 +36011,6 @@ function feSlabThicknessRule(prev, next) {
       message: `${t} mm is below the least thickness of Table (6-3), ${m.tReq} mm (${label}). The thickness is held at ${m.tReq} mm.` } };
   }
   return { item: next, raised: null };
-}
-
-/**
- * v3.54.0. In each mesh the bars in Y follow the bars in X — diameter and
- * number — while Y is blank or still the same as X was; once Y is set apart
- * it keeps its own. A number per metre that leaves less than the clear
- * distance of §7-3-3-1 between the bars of the layer is refused.
- */
-function feSlabMeshRule(prev, next) {
-  const pg = (prev && prev.geometry) || {};
-  const g = { ...next.geometry };
-  let changed = false;
-  // v3.54.3: a blank mesh is filled at the least steel, §6-2-1-2-3:
-  // Ø10, at the number per metre that gives 0,6/f_y of the section and not
-  // fewer than five.
-  const fy = Number((next.materials || {}).fy) || 0; const tt = Number(g.t) || 0;
-  for (const L of FE_LAYERS) {
-    const blankD = g[L.dia] === '' || g[L.dia] === null || g[L.dia] === undefined;
-    const blankN = g[L.n] === '' || g[L.n] === null || g[L.n] === undefined;
-    if (blankD) { g[L.dia] = 10; changed = true; }
-    if (blankN && fy > 0 && tt > 0) {
-      const A = Math.PI * Number(g[L.dia]) ** 2 / 4;
-      g[L.n] = Math.max(5, Math.ceil(((0.6 / fy) * 1000 * tt) / A - 1e-9));
-      changed = true;
-    }
-  }
-  const filled = changed;
-  for (const f of ['bot', 'top']) {
-    for (const k of ['Dia', 'N']) {
-      const X = `${f}${k}X`; const Y = `${f}${k}Y`;
-      if (g[X] === pg[X]) continue;
-      const py = pg[Y];
-      if (py === '' || py === null || py === undefined || py === pg[X]) { g[Y] = g[X]; changed = true; }
-    }
-  }
-  // v3.54.5: never below the least steel. A mesh the thickness, the grade or
-  // its diameter has left short is raised to it; a number entered below it
-  // is set to it.
-  const bad = [];
-  if (fy > 0 && tt > 0) {
-    const asMin = (0.6 / fy) * 1000 * tt;
-    for (const L of FE_LAYERS) {
-      const A = Math.PI * Number(g[L.dia]) ** 2 / 4;
-      if (!(A > 0) || !(Number(g[L.n]) > 0)) continue;
-      if (Number(g[L.n]) * A + 1e-6 < asMin) {
-        const nMin = Math.max(5, Math.ceil(asMin / A - 1e-9));
-        bad.push(`${L.label}: ${g[L.n]} Ø${g[L.dia]} per metre = ${Math.round(Number(g[L.n]) * A)} mm²/m is below the least steel 0,6/f_y × 1000 × t = ${Math.round(asMin)} mm²/m (ECP 203-2020 §6-2-1-2-3); set to ${nMin} per metre.`);
-        g[L.n] = nMin; changed = true;
-      }
-    }
-  }
-  const zoneAdds = (key) => Object.values(((g.add || {})[key] || {}).zones || {}).concat([feAdd(g, key)]).filter((a) => Number(a.n) > 0);
-  for (const L of FE_LAYERS) {
-    if (g[L.n] === pg[L.n] && g[L.dia] === pg[L.dia]) continue;
-    const adds = zoneAdds(L.key);
-    const a = adds.length ? adds.reduce((x, y) => (Number(y.n) > Number(x.n) ? y : x)) : { n: 0, dia: 0 };
-    const fit = feBarsFit(g[L.n], g[L.dia], a.n, a.dia, g.agg);
-    if (!fit.ok) {
-      bad.push(`${L.label}: ${fit.n} bars per metre leave ${Math.round(fit.clear)} mm between Ø${fit.dmax} bars, less than ${Math.round(fit.need)} mm (ECP 203-2020 §7-3-3-1); at most ${fit.max} per metre${a.n > 0 ? ' with the added bars' : ''}.`);
-      if (g[L.n] !== pg[L.n]) { g[L.n] = pg[L.n]; changed = true; }
-    }
-  }
-  return { item: changed ? { ...next, geometry: g } : next, message: bad.length ? bad.join(' ') : null, filled };
 }
 
 function feThicknessHint(it, u) {
@@ -37300,6 +37329,40 @@ function sectionSheetName(item, section) {
   if (!groupName) return designed;
   if (!designed) return groupName;
   return `${designed} · group: ${groupName}`;
+}
+
+/**
+ * v3.54.6: the calculation sheets of several items, one after another, to
+ * print together. Each item's sheet is the one its own Sheet button opens:
+ * a group gives one sheet per section, on the governing member.
+ */
+function multiSheetsScreen(app, ids) {
+  const items = (ids || []).map((id) => app.store.state.project.items.find((i) => i.id === id)).filter(Boolean);
+  const toolbar = h('div', { class: 'cs-toolbar' },
+    button('Back to the design items', { variant: 'quiet', small: true, onClick: () => app.navigate('items') }),
+    items.length ? button('Print or save as PDF', { id: 'sheets-print', onClick: () => window.print() }) : null,
+    h('span', { class: 'tg-muted', style: { fontSize: '12px', marginLeft: 'auto' } },
+      `${items.length} item${items.length === 1 ? '' : 's'}: ${items.map((x) => x.number).join(', ')} · Print at A4, 100% scale, background graphics on.`));
+  if (!items.length) return h('div', null, toolbar, h('p', null, 'No items were chosen.'));
+  const docs = [];
+  for (const item of items) {
+    let gv = null;
+    try { gv = groupVerdict(app.registry, item); } catch { gv = null; }
+    let node;
+    if (gv) {
+      // The group's own screen, without its toolbar.
+      const whole = groupSheetsScreen(app, item.id);
+      node = h('div', { class: 'cs-batch' }, ...[...whole.childNodes].slice(1));
+    } else {
+      const st = resultState(item);
+      const warn = st.state === RESULT_STATE.STALE
+        ? h('div', { class: 'cs-screenonly', style: { maxWidth: '210mm', margin: '0 auto 14px' } }, note({ variant: 'danger', title: `${item.number}: STALE — no current result`, body: `${st.reason} Recalculate from the design screen.` }))
+        : null;
+      node = h('div', { class: 'cs-batch' }, warn, renderCalcSheet(app, item));
+    }
+    docs.push(node);
+  }
+  return h('div', null, toolbar, ...docs);
 }
 
 
@@ -40843,6 +40906,7 @@ function boot(mountEl) {
     openDrawings(id) { app.openItemId = id; app.route = 'drawings'; app.render(); },
     openGroup(id) { app.openItemId = id; app.route = 'group'; app.render(); },
     openGroupSheets(id) { app.openItemId = id; app.route = 'groupsheets'; app.render(); },
+    openSheets(ids) { app.sheetIds = [...ids]; app.route = 'sheets'; app.render(); },
     navigate(route) { app.route = route; app.render(); },
     load(project, audit, people, currentUserId) {
       app.store.replace({ project });
@@ -40868,7 +40932,7 @@ function boot(mountEl) {
     app.route = route;
 
     shell.refreshChrome();
-    const key = `${route}|${app.openItemId || ''}|${app.openFrame || ''}`;
+    const key = `${route}|${app.openItemId || ''}|${app.openFrame || ''}|${route === 'sheets' ? (app.sheetIds || []).join(',') : ''}`;
     const same = key === app.lastScreenKey;
     app.lastScreenKey = key;
     shell.setContent(screenFor(app, route), { keepScroll: same });
@@ -40896,6 +40960,7 @@ function screenFor(app, route) {
     case 'quick': return quickScreen(app);
     case 'import': return importScreen(app);
     case 'group': return app.openItemId ? groupScreen(app, app.openItemId) : itemsScreen(app);
+    case 'sheets': return multiSheetsScreen(app, app.sheetIds || []);
     case 'groupsheets': return app.openItemId ? groupSheetsScreen(app, app.openItemId) : itemsScreen(app);
     case 'membersheet': return app.openItemId ? groupSheetsScreen(app, app.openItemId, app.openFrame) : itemsScreen(app);
     case 'codes': return codesScreen(app);
